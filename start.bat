@@ -1,2 +1,2 @@
 @echo off
-cargo run --bin Bot --release
+cargo run --bin bot --release
