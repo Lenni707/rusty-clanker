@@ -2,6 +2,9 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde_json::Value;
 use std::io::{self, BufRead, Write};
 
+mod bot
+mod bot_info
+
 fn main() {
     let mut rng = StdRng::seed_from_u64(1);
     let moves = ["N", "S", "E", "W"];
@@ -31,21 +34,9 @@ fn main() {
                     eprintln!("Random walker (Rust) launching on a {width}x{height} map");
                     first_tick = false;
                 }
-                if let Some(Value::Object(map)) = data.as_ref() {
-                    if let Some(Value::Array(gems)) = map.get("visible_gems") {
-                        for gem in gems {
-                            if let Some(Value::Array(pos)) = gem.get("position") {
-                                if pos.len() == 2 {
-                                    let gx = pos[0].as_i64().unwrap_or(0);
-                                    let gy = pos[1].as_i64().unwrap_or(0);
-                                    eprintln!("Gem at ({gx}, {gy})");
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
+
         // Emit a random move
         let move_index = rng.random_range(0..moves.len());
         // Write and flush promptly
