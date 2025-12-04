@@ -23,14 +23,29 @@ fn main() {
         if first_tick {
             if let Some(Value::Object(map)) = data.as_ref() {
                 if let Some(Value::Object(cfg_map)) = map.get("config") {
-                    let width = cfg_map.get("width").map(|v| v.as_i64().unwrap_or(0)).unwrap_or(0);
+                    let width = cfg_map.get("width")
+                        .map(|v| v.as_i64()
+                        .unwrap_or(0))
+                        .unwrap_or(0);
                     let height = cfg_map.get("height").map(|v| v.as_i64().unwrap_or(0)).unwrap_or(0);
                     eprintln!("Random walker (Rust) launching on a {width}x{height} map");
                     first_tick = false;
                 }
+                if let Some(Value::Object(map)) = data.as_ref() {
+                    if let Some(Value::Array(gems)) = map.get("visible_gems") {
+                        for gem in gems {
+                            if let Some(Value::Array(pos)) = gem.get("position") {
+                                if pos.len() == 2 {
+                                    let gx = pos[0].as_i64().unwrap_or(0);
+                                    let gy = pos[1].as_i64().unwrap_or(0);
+                                    eprintln!("Gem at ({gx}, {gy})");
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-
         // Emit a random move
         let move_index = rng.random_range(0..moves.len());
         // Write and flush promptly
@@ -38,4 +53,3 @@ fn main() {
         let _ = io::stdout().flush();
     }
 }
-
