@@ -35,10 +35,7 @@ fn main() {
             }
         };
 
-        eprintln!("Tick {}", state.tick);
-
         let dir = decide(&state);
-        eprintln!("Dir {}", dir.as_geo());
         println!("{}", dir.as_geo());
         stdout.flush().unwrap();
     }
