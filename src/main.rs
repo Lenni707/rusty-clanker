@@ -1,46 +1,45 @@
-use rand::{rngs::StdRng, Rng, SeedableRng};
-use serde_json::Value;
 use std::io::{self, BufRead, Write};
 
-mod bot
-mod bot_info
+mod decision;
+mod memory;
+mod states;
+
+use decision::decide;
+use states::GameState;
+
+use crate::memory::BotMemory;
 
 fn main() {
-    let mut rng = StdRng::seed_from_u64(1);
-    let moves = ["N", "S", "E", "W"];
-    let mut first_tick = true;
+    eprint!("A small step for the bot, but a giant leap for the developers");
 
-    // Read one JSON object per line from stdin
-    for line in io::stdin().lock().lines() {
-        if line.is_err() {
-            break;
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    let mut memory = BotMemory::new();
+
+    for line in stdin.lock().lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => break,
+        };
+        if line.trim().is_empty() {
+            continue;
         }
-        let line = line.unwrap();
 
-        let data = if !line.trim().is_empty() {
-            serde_json::from_str::<Value>(&line).map(|v| v).ok()
-        } else {
-            None
+        let state: GameState = match serde_json::from_str(&line) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("JSON parse error: {e}");
+                println!("WAIT");
+                continue;
+            }
         };
 
-        if first_tick {
-            if let Some(Value::Object(map)) = data.as_ref() {
-                if let Some(Value::Object(cfg_map)) = map.get("config") {
-                    let width = cfg_map.get("width")
-                        .map(|v| v.as_i64()
-                        .unwrap_or(0))
-                        .unwrap_or(0);
-                    let height = cfg_map.get("height").map(|v| v.as_i64().unwrap_or(0)).unwrap_or(0);
-                    eprintln!("Random walker (Rust) launching on a {width}x{height} map");
-                    first_tick = false;
-                }
-            }
-        }
+        eprintln!("Tick {}", state.tick);
 
-        // Emit a random move
-        let move_index = rng.random_range(0..moves.len());
-        // Write and flush promptly
-        println!("{}", moves[move_index]);
-        let _ = io::stdout().flush();
+        let dir = decide(&state);
+        eprintln!("Dir {}", dir.as_geo());
+        println!("{}", dir.as_geo());
+        stdout.flush().unwrap();
     }
 }

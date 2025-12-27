@@ -1,0 +1,335 @@
+use std::{
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet},
+    i32,
+};
+
+use rand::{Rng, seq::IndexedRandom};
+
+use crate::{memory::BotMemory, states::GameState};
+
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Right,
+    Left,
+    Up,
+    Down,
+    Wait,
+}
+
+impl Direction {
+    pub fn as_geo(&self) -> &'static str {
+        match self {
+            Direction::Down => "S",
+            Direction::Up => "N",
+            Direction::Left => "W",
+            Direction::Right => "E",
+            _ => "WAIT",
+        }
+    }
+}
+// =====================================================
+// PATHFINDING
+// - via dem A* algorithmus
+// - verwenden wie hier, um den kürzesten Weg zwischen 2 Punkten mit dem geringsten Kost zu finden
+// =====================================================
+
+#[derive(Clone, Eq, PartialEq)]
+struct Node {
+    position: [i32; 2], // Wo ist der zu erkundende Knoten / Punkt
+    g_cost: i32,        // Wie viele Schritte vom Start bis dorthin?
+    f_cost: i32,        // Geschätze Kosten via heuristic bis zum Ziel
+}
+
+// VERGLEICHEN VON STRECKEN
+// Wir wollten der der Node, mit dem kleinsten f_cost, welcher als "größer" gilt
+// Das wird dann in einem BinaryHeap gespeichert. Dieser sortiert alle Daten nach der Größe, bei und also das kleine zu erst
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .f_cost
+            .cmp(&self.f_cost)
+            .then_with(|| other.g_cost.cmp(&self.g_cost)) // mein Gott
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// HILFSFUNKTIONEN
+// 1. Manhatten Distance (heuristic)
+// - Schätzt die Distanz zwischen 2 Punkten
+fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
+    (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
+}
+// 2. Gibt alle Nachbarn zurück, no shit right?
+fn get_neighbors(pos: [i32; 2]) -> Vec<[i32; 2]> {
+    vec![
+        [pos[0] + 1, pos[1]], // Rechts (X+1)
+        [pos[0] - 1, pos[1]], // Links (X-1)
+        [pos[0], pos[1] + 1], // Unten (Y+1)
+        [pos[0], pos[1] - 1], // Oben (Y-1)
+    ]
+}
+
+fn is_in_bounds(pos: [i32; 2], width: i32, height: i32) -> bool {
+    pos[0] >= 0 && pos[0] < width && pos[1] >= 0 && pos[1] < height
+}
+
+// =====================================================
+// A* Pathfinding: Hauptalgorythmus
+// =====================================================
+
+fn astar(
+    start: [i32; 2],
+    goal: [i32; 2],
+    walls: &HashSet<[i32; 2]>,
+    width: i32,
+    height: i32,
+) -> Option<Vec<[i32; 2]>> {
+    // OPENSET: Priority Queue zu dem nächsten Besuchbaren knoten
+    let mut open_set = BinaryHeap::new();
+
+    // Speichert jede Position, aus der wir gekommen sind.
+    // Bsp: came_from[[3, 4]] = [2, 4] -> um zu 3, 4 zu kommen sind wir von 2, 4 aus gekommen
+    let mut came_from: HashMap<[i32; 2], [i32; 2]> = HashMap::new();
+
+    // Speichet die Kosten von Start zu jeder Position
+    // g_score[[3, 4]] = 5 bedeutet, wir haben 5 Schritte gebraucht um 3, 4 zu erreichen
+    let mut g_score: HashMap<[i32; 2], i32> = HashMap::new();
+
+    // Startposition hat g_cost = 0, da wir da bereits sind
+    g_score.insert(start, 0);
+
+    // Startknoten in open_set hinzufügen
+    open_set.push(Node {
+        position: start,
+        g_cost: 0,
+        f_cost: heuristic(start, goal),
+    });
+
+    // Hauptschleife
+    // - wenn es einen Knoten zum Untersuchen gibt:
+    while let Some(current) = open_set.pop() {
+        // Ist das Ziel bereits erreicht?
+        if current.position == goal {
+            eprintln!("Ziel erreicht");
+            // Den Pfand rekonstruieren
+            let mut path = vec![current.position];
+            let mut pos = current.position;
+
+            // Folgen des "came_from" Links bis zum Start
+            while let Some(&previous) = came_from.get(&pos) {
+                path.push(previous);
+                pos = previous;
+            }
+
+            // Pfad umdrehen, damit Start -> Ziel
+            path.reverse();
+
+            eprintln!("Pfad gefunden mit {} Schritten", path.len());
+            return Some(path);
+        }
+
+        // Ist das Ziel nicht erreicht:
+        // NACHBARN UNTERSUCHEN
+
+        for neighbor_pos in get_neighbors(current.position) {
+            // Ist der Nachbar im Spielfeld, ist das überhaupt relevant hier?
+            if !is_in_bounds(neighbor_pos, width, height) {
+                continue;
+            }
+            // Ist der Nachbar eine Wand?
+            if walls.contains(&neighbor_pos) {
+                continue; // Wenn ja: Überspringen
+            }
+
+            // Berechnen der Kosten, von current bis zu neighbor
+            let tentative_g_score = g_score.get(&current.position).unwrap_or(&i32::MAX) + 1; // Bei Fehler: Den Maximal möglichen Wert nehmen, +1 von curr zu neigh
+
+            let neighbor_g_score = *g_score.get(&neighbor_pos).unwrap_or(&i32::MAX);
+
+            // Haben wir einen besseren Weg gefunden?
+            if tentative_g_score < neighbor_g_score {
+                came_from.insert(neighbor_pos, current.position);
+                g_score.insert(neighbor_pos, tentative_g_score);
+
+                // Füge neighbor zur open_set hinzu (oder update ihn)
+                let h = heuristic(neighbor_pos, goal);
+                open_set.push(Node {
+                    position: neighbor_pos,
+                    g_cost: tentative_g_score,
+                    f_cost: tentative_g_score + h, // g + h = f
+                });
+            }
+        }
+    }
+    eprintln!("UNEXPECTED BEHAIVIOR: Keinen Weg zum Ziel gefunden");
+    None
+}
+
+// =====================================================
+// Entscheidungsfunktion für den Bot
+// =====================================================
+
+pub fn decide(state: &GameState) -> Direction {
+    // TODO: Config wird nur einmal am Anfang geschickt, am besten speichern :)
+    // let config = match &state.config {
+    //     Some(c) => c,
+    //     None => {
+    //         eprintln!("Keine Config gefunden...");
+    //         return Direction::Wait;
+    //     }
+    // };
+
+    if state.visible_gems.is_empty() {
+        // Keine Gems aktuell zu sehen:
+        // HIER DANN LOGIK EINBAUEN
+        // V1 Random:
+        // let directions = [
+        //     Direction::Up,
+        //     Direction::Down,
+        //     Direction::Left,
+        //     Direction::Right,
+        // ];
+        // let mut rng = rand::rng();
+
+        // return directions[rng.random_range(0..directions.len())];
+
+        // V2 Spirale
+        return match (state.tick / 5) % 4 {
+            0 => Direction::Right,
+            1 => Direction::Down,
+            2 => Direction::Left,
+            _ => Direction::Up,
+        }
+    }
+
+    // Wählen des Target Gems:
+    // TODO: Später hier den besten auswählen, nach distanz und ttl
+
+    let target_gem = &state.visible_gems[0];
+
+    let walls: HashSet<[i32; 2]> = state.wall.iter().cloned().collect();
+
+    // Finde den Weg mit A*
+    let path = astar(
+        state.bot,
+        target_gem.position,
+        &walls,
+        30, 
+        30
+        // config.width,
+        // config.height,
+    );
+
+    // Wenn wir einen Pfad gefunden haben:
+    if let Some(path) = path {
+        // path enthält: [Start, Schritt1, Schritt2, ..., Ziel]
+
+        if path.len() > 1 {
+            let next_step = path[1];
+
+            let dx = next_step[0] - state.bot[0];
+            let dy = next_step[1] - state.bot[1];
+
+            return match (dx, dy) {
+                 (1, 0) => Direction::Right,   // X+1 = rechts
+                (-1, 0) => Direction::Left,   // X-1 = links
+                (0, 1) => Direction::Down,    // Y+1 = unten
+                (0, -1) => Direction::Up,     // Y-1 = oben
+                _ => {
+                    eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
+                    Direction::Wait
+                }
+            }
+        } else { // Ziel wurde erreicht
+            return Direction::Wait;
+        }
+    }
+    eprintln!("Es wurde kein Pfad gefunden :/");
+    Direction::Wait
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
+    let bot = state.bot;
+    let bot_pos = (bot[0], bot[1]);
+    memory.mark_visited((bot[0], bot[1]));
+
+    // Wenn ein Gems da ist: Hin gehen
+    if let Some(gem) = state.visible_gems.first() {
+        eprintln!("Visible gems: {}", state.visible_gems.len());
+        // first da sonst idx out of range, sofern kein GEM das ist
+        let gem_pos = gem.position;
+
+        return move_towards(&bot_pos, (gem_pos[0], gem_pos[1]), &state);
+    }
+    // Wenn keine Gems vorhanden: Eine unbekannte, neue zufällige Richtung probieren
+    let directions = [
+        Direction::Up,
+        Direction::Down,
+        Direction::Left,
+        Direction::Right,
+    ];
+    let mut rng = rand::rng();
+
+    for dir in directions.choose_multiple(&mut rng, directions.len()) {
+        let next_pos = match dir {
+            Direction::Up => (bot[0], bot[1] - 1),
+            Direction::Down => (bot[0], bot[1] + 1),
+            Direction::Left => (bot[0] - 1, bot[1]),
+            Direction::Right => (bot[0] + 1, bot[1]),
+            _ => (bot[0], bot[1]),
+        };
+        return *dir;
+        if !memory.is_visited(next_pos) {}
+    }
+
+    Direction::Wait
+}
+fn move_towards(c_pos: &(i32, i32), t_pos: (i32, i32), state: &GameState) -> Direction {
+    let (cx, cy) = *c_pos;
+    let (tx, ty) = t_pos;
+
+    // Links
+    if tx < cx && !state.is_wall([cx - 1, cy]) {
+        return Direction::Left;
+    }
+
+    // Rechts
+    if tx > cx && !state.is_wall([cx + 1, cy]) {
+        return Direction::Right;
+    }
+
+    // Oben
+    if ty < cy && !state.is_wall([cx, cy - 1]) {
+        return Direction::Up;
+    }
+
+    // Unten
+    if ty > cy && !state.is_wall([cx, cy + 1]) {
+        return Direction::Down;
+    }
+
+    // Sollte nie passieren
+    eprintln!("UNEXPECTED BEHAVIOR");
+    Direction::Wait
+}

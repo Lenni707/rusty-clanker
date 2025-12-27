@@ -1,2 +1,2 @@
 @echo off
-cargo run --bin bot --release
+cargo run --bin bot --release -- %*
