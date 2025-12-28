@@ -22,7 +22,7 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 pub struct Gem {
     pub position: [i32; 2],
-    ttl: u32,
+    pub ttl: i32,
 }
 
 impl GameState {

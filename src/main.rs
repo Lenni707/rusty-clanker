@@ -16,6 +16,8 @@ fn main() {
     let mut stdout = io::stdout();
 
     let mut memory = BotMemory::new();
+    let mut width = 100; // Default einstellungen
+    let mut height = 100;
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -35,7 +37,16 @@ fn main() {
             }
         };
 
-        let dir = decide(&state);
+        // Config speichern, wenn sie vorhanden ist: Da sie nur einmal am Anfang geschickt wird
+        if let Some(config) = &state.config {
+            width = config.width;
+            height = config.height;
+            eprintln!("Width: {}, Height: {}", width, height)
+        }
+
+        memory.update(&state);
+
+        let dir = decide(&state, &memory, width, height);
         println!("{}", dir.as_geo());
         stdout.flush().unwrap();
     }

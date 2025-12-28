@@ -4,7 +4,7 @@ use std::{
     i32,
 };
 
-use rand::{Rng, seq::IndexedRandom};
+use rand::Rng;
 
 use crate::{memory::BotMemory, states::GameState};
 
@@ -110,13 +110,12 @@ fn astar(
         g_cost: 0,
         f_cost: heuristic(start, goal),
     });
-
     // Hauptschleife
     // - wenn es einen Knoten zum Untersuchen gibt:
     while let Some(current) = open_set.pop() {
         // Ist das Ziel bereits erreicht?
         if current.position == goal {
-            eprintln!("Ziel erreicht");
+            //eprintln!("Ziel erreicht");
             // Den Pfand rekonstruieren
             let mut path = vec![current.position];
             let mut pos = current.position;
@@ -130,7 +129,7 @@ fn astar(
             // Pfad umdrehen, damit Start -> Ziel
             path.reverse();
 
-            eprintln!("Pfad gefunden mit {} Schritten", path.len());
+            // eprintln!("Pfad gefunden mit {} Schritten", path.len());
             return Some(path);
         }
 
@@ -175,7 +174,7 @@ fn astar(
 // Entscheidungsfunktion für den Bot
 // =====================================================
 
-pub fn decide(state: &GameState) -> Direction {
+pub fn decide(state: &GameState, memory: &BotMemory, width: i32, height: i32) -> Direction {
     // TODO: Config wird nur einmal am Anfang geschickt, am besten speichern :)
     // let config = match &state.config {
     //     Some(c) => c,
@@ -184,44 +183,38 @@ pub fn decide(state: &GameState) -> Direction {
     //         return Direction::Wait;
     //     }
     // };
+    // Gems werden nicht aus der state entnommen, sonder aus dem memory, damit entscheidungen langfristig getroffen werden können 
+    let target_gem = match memory.get_target() {
+        Some(t) => t, 
+        None => {
+            // TODO: Hier die explore funktion einbauen
+            let directions = [
+                Direction::Up,
+                Direction::Down,
+                Direction::Left,
+                Direction::Right,
+            ];
+            let mut rng = rand::rng();
 
-    if state.visible_gems.is_empty() {
-        // Keine Gems aktuell zu sehen:
-        // HIER DANN LOGIK EINBAUEN
-        // V1 Random:
-        // let directions = [
-        //     Direction::Up,
-        //     Direction::Down,
-        //     Direction::Left,
-        //     Direction::Right,
-        // ];
-        // let mut rng = rand::rng();
-
-        // return directions[rng.random_range(0..directions.len())];
-
-        // V2 Spirale
-        return match (state.tick / 5) % 4 {
-            0 => Direction::Right,
-            1 => Direction::Down,
-            2 => Direction::Left,
-            _ => Direction::Up,
+            return directions[rng.random_range(0..directions.len())];
         }
-    }
+    };
+
 
     // Wählen des Target Gems:
     // TODO: Später hier den besten auswählen, nach distanz und ttl
 
-    let target_gem = &state.visible_gems[0];
+    // let target_gem = &state.visible_gems[0];
 
     let walls: HashSet<[i32; 2]> = state.wall.iter().cloned().collect();
 
     // Finde den Weg mit A*
     let path = astar(
         state.bot,
-        target_gem.position,
+        target_gem,
         &walls,
-        30, 
-        30
+        width,
+        height,
         // config.width,
         // config.height,
     );
@@ -229,7 +222,6 @@ pub fn decide(state: &GameState) -> Direction {
     // Wenn wir einen Pfad gefunden haben:
     if let Some(path) = path {
         // path enthält: [Start, Schritt1, Schritt2, ..., Ziel]
-
         if path.len() > 1 {
             let next_step = path[1];
 
@@ -251,6 +243,19 @@ pub fn decide(state: &GameState) -> Direction {
         }
     }
     eprintln!("Es wurde kein Pfad gefunden :/");
+    // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
+    eprintln!("{:?}", memory.known_gems);
+    for gem in &state.visible_gems {
+        let mut iter_check = false;
+        for supposed_gem in &memory.known_gems {
+            if supposed_gem.0 == &gem.position {
+                iter_check = true;
+            }
+        }
+        if !iter_check {
+            eprintln!("DISCRAPENCY: {:?}", gem.position)
+        }
+    }
     Direction::Wait
 }
 
@@ -269,67 +274,67 @@ pub fn decide(state: &GameState) -> Direction {
 
 
 
-pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
-    let bot = state.bot;
-    let bot_pos = (bot[0], bot[1]);
-    memory.mark_visited((bot[0], bot[1]));
+// pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
+//     let bot = state.bot;
+//     let bot_pos = (bot[0], bot[1]);
+//     memory.mark_visited((bot[0], bot[1]));
 
-    // Wenn ein Gems da ist: Hin gehen
-    if let Some(gem) = state.visible_gems.first() {
-        eprintln!("Visible gems: {}", state.visible_gems.len());
-        // first da sonst idx out of range, sofern kein GEM das ist
-        let gem_pos = gem.position;
+//     // Wenn ein Gems da ist: Hin gehen
+//     if let Some(gem) = state.visible_gems.first() {
+//         eprintln!("Visible gems: {}", state.visible_gems.len());
+//         // first da sonst idx out of range, sofern kein GEM das ist
+//         let gem_pos = gem.position;
 
-        return move_towards(&bot_pos, (gem_pos[0], gem_pos[1]), &state);
-    }
-    // Wenn keine Gems vorhanden: Eine unbekannte, neue zufällige Richtung probieren
-    let directions = [
-        Direction::Up,
-        Direction::Down,
-        Direction::Left,
-        Direction::Right,
-    ];
-    let mut rng = rand::rng();
+//         return move_towards(&bot_pos, (gem_pos[0], gem_pos[1]), &state);
+//     }
+//     // Wenn keine Gems vorhanden: Eine unbekannte, neue zufällige Richtung probieren
+//     let directions = [
+//         Direction::Up,
+//         Direction::Down,
+//         Direction::Left,
+//         Direction::Right,
+//     ];
+//     let mut rng = rand::rng();
 
-    for dir in directions.choose_multiple(&mut rng, directions.len()) {
-        let next_pos = match dir {
-            Direction::Up => (bot[0], bot[1] - 1),
-            Direction::Down => (bot[0], bot[1] + 1),
-            Direction::Left => (bot[0] - 1, bot[1]),
-            Direction::Right => (bot[0] + 1, bot[1]),
-            _ => (bot[0], bot[1]),
-        };
-        return *dir;
-        if !memory.is_visited(next_pos) {}
-    }
+//     for dir in directions.choose_multiple(&mut rng, directions.len()) {
+//         let next_pos = match dir {
+//             Direction::Up => (bot[0], bot[1] - 1),
+//             Direction::Down => (bot[0], bot[1] + 1),
+//             Direction::Left => (bot[0] - 1, bot[1]),
+//             Direction::Right => (bot[0] + 1, bot[1]),
+//             _ => (bot[0], bot[1]),
+//         };
+//         return *dir;
+//         if !memory.is_visited(next_pos) {}
+//     }
 
-    Direction::Wait
-}
-fn move_towards(c_pos: &(i32, i32), t_pos: (i32, i32), state: &GameState) -> Direction {
-    let (cx, cy) = *c_pos;
-    let (tx, ty) = t_pos;
+//     Direction::Wait
+// }
+// fn move_towards(c_pos: &(i32, i32), t_pos: (i32, i32), state: &GameState) -> Direction {
+//     let (cx, cy) = *c_pos;
+//     let (tx, ty) = t_pos;
 
-    // Links
-    if tx < cx && !state.is_wall([cx - 1, cy]) {
-        return Direction::Left;
-    }
+//     // Links
+//     if tx < cx && !state.is_wall([cx - 1, cy]) {
+//         return Direction::Left;
+//     }
 
-    // Rechts
-    if tx > cx && !state.is_wall([cx + 1, cy]) {
-        return Direction::Right;
-    }
+//     // Rechts
+//     if tx > cx && !state.is_wall([cx + 1, cy]) {
+//         return Direction::Right;
+//     }
 
-    // Oben
-    if ty < cy && !state.is_wall([cx, cy - 1]) {
-        return Direction::Up;
-    }
+//     // Oben
+//     if ty < cy && !state.is_wall([cx, cy - 1]) {
+//         return Direction::Up;
+//     }
 
-    // Unten
-    if ty > cy && !state.is_wall([cx, cy + 1]) {
-        return Direction::Down;
-    }
+//     // Unten
+//     if ty > cy && !state.is_wall([cx, cy + 1]) {
+//         return Direction::Down;
+//     }
 
-    // Sollte nie passieren
-    eprintln!("UNEXPECTED BEHAVIOR");
-    Direction::Wait
-}
+//     // Sollte nie passieren
+//     eprintln!("UNEXPECTED BEHAVIOR");
+//     Direction::Wait
+// }
