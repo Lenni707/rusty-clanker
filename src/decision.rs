@@ -171,6 +171,22 @@ fn astar(
 }
 
 // =====================================================
+// EXPLORATION von unbekannten Orten (spooky)
+// =====================================================
+
+fn get_exploration_target(
+    state: &GameState,
+    memory: &BotMemory
+) -> Option<[i32; 2]> {
+    // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
+    for &floor_pos in &state.floor {
+        let seen = memory.known_positions.get(&floor_pos);
+    }
+    None
+}
+
+
+// =====================================================
 // Entscheidungsfunktion für den Bot
 // =====================================================
 

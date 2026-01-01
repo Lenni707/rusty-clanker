@@ -43,7 +43,7 @@ fn main() {
             height = config.height;
             eprintln!("Width: {}, Height: {}", width, height)
         }
-
+        
         memory.update(&state);
 
         let dir = decide(&state, &memory, width, height);
