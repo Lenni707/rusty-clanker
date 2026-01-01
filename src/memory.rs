@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, string};
 
 use crate::states::GameState;
 
@@ -47,16 +47,17 @@ impl BotMemory {
             }
         }
 
-        // Neues Ziel wählen
-        if self.current_target.is_none() && !self.known_gems.is_empty() {
-            // Wenn es aktuell kein Ziel gibt, aber uns noch ein gem bekannst ist:
-            if let Some((&pos, gem)) = self.known_gems.iter().next() {
-                self.current_target = Some(
-                    GemMemory { 
-                        position: pos,
-                        ttl: gem.ttl 
-                    }
-                )
+        // Ziel wählen - always pick closest gem
+        if !self.known_gems.is_empty() {
+            if let Some(pos) = self.get_closest_gem(state) {
+                if let Some(gem) = self.known_gems.get(&pos) {
+                    self.current_target = Some(
+                        GemMemory { 
+                            position: pos,
+                            ttl: gem.ttl 
+                        }
+                    );
+                }
             }
         }
     }
@@ -67,4 +68,25 @@ impl BotMemory {
             None => None
         }
     }
+
+    pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
+        let closest = self.known_gems
+            .keys()
+            .reduce(|k1, k2| { // folds the iterator by applying the get_dist function
+                if get_dist(*k1, state.bot) <= get_dist(*k2, state.bot) {
+                    k1
+                } else {
+                    k2
+                }
+            })
+            .copied() // bc its a pointer
+            .unwrap(); // extracts from Option type
+        Some(closest)
+    }
+}
+
+pub fn get_dist(a: [i32; 2], b: [i32; 2]) -> i32 {
+    let dx = a[0] - b[0];
+    let dy = a[1] - b[1];
+    dx * dx + dy * dy
 }
