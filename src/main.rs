@@ -65,9 +65,8 @@ fn main() {
 }
 
 // BEKANNTE BUGS:
-// WICHTIG: Liste von Known Walls in die Wegfindung integrieren, damit der Bot nicht stuck ist wie auf 1okrpe5
 // Beim Exploren in keinen Bereichen ist der Bot stuck: Vielleicht die letzen Schritte zurück gehen? Randam laufen?
 // Feature Idee: Beim Exploren nicht vis_radius betrachen, sondern alles, aber entferntere Felder intressanter machen nach Kriterien wie bspw. ob dort eine Wall ist?
-
+// Dieses Feature glaube ich ist redundant und vielleicht gar nicht sooo lokrativ, da neuen Felder so weniger oft gefunden werden
 // PROBLEMATISCHE SEEDS:
-// 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb
+// 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb, bh34pf

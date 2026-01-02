@@ -184,6 +184,13 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
     let mut all_positions: HashSet<[i32; 2]> = HashSet::new();
 
     for &floor_pos in &state.floor {
+        all_positions.insert(floor_pos);
+    }
+    for &floor_pos in memory.known_positions.keys() {
+        all_positions.insert(floor_pos);
+    }
+
+    for &floor_pos in &all_positions {
         let seen = memory.known_positions.get(&floor_pos);
 
         let (interest_score, exploration_bonus) = match seen {
@@ -233,14 +240,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                         }
                         None => {
                             eprintln!("Kein Exploration Target gefunden - 404 :/");
-                            let mut rng = rand::rng();
-                            let directions = [
-                                Direction::Down,
-                                Direction::Up,
-                                Direction::Left,
-                                Direction::Right,
-                            ];
-                            return directions[rng.random_range(0..directions.len())];
+                            return move_random();
                             return Direction::Wait;
                         }
                     }
@@ -271,13 +271,13 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                 (0, -1) => Direction::Up,   // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
-                    Direction::Wait
+                    return move_random();
                 }
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
             // Ziel wurde erreicht
-            return Direction::Wait;
+            return move_random();
         }
     }
     eprintln!("Es wurde kein Pfad gefunden :/");
@@ -295,6 +295,18 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
         }
     }
     Direction::Wait
+}
+
+fn move_random() -> Direction {
+    eprintln!("UNEXPECTED BEHAVIOR: FALLBACK TO RANDOM MOVMENT");
+    let mut rng = rand::rng();
+    let directions = [
+        Direction::Down,
+        Direction::Up,
+        Direction::Left,
+        Direction::Right,
+    ];
+    return directions[rng.random_range(0..directions.len())];
 }
 
 // pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
