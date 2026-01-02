@@ -1,25 +1,32 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::states::GameState;
 
 pub struct BotMemory {
     pub current_target: Option<GemMemory>,
     pub known_gems: HashMap<[i32; 2], GemMemory>,
-    pub known_positions: HashMap<[i32; 2], u32>,
-    pub exploration_target: Option<[i32; 2]>, // pub explored_position: HashSet<[i32; 2]> // später für eine Logik, wenn kein Gem zu sehen ist
+    pub known_positions: HashMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
+    pub known_walls: HashSet<[i32; 2]>,
+    pub exploration_target: Option<[i32; 2]>,
+    // pub last_steps
 }
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
     pub position: [i32; 2],
     pub ttl: i32,
 }
-
+#[derive(Debug, Clone, Copy)]
+pub struct PositionMemory {
+    pub last_seen_tick: u32,
+    pub vis_floor_count: usize,
+}
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
             current_target: None,
             known_gems: HashMap::new(),
             known_positions: HashMap::new(),
+            known_walls: HashSet::new(),
             exploration_target: None,
         }
     }
@@ -36,18 +43,28 @@ impl BotMemory {
             );
         }
         // Alle Sichbaren Positionen markieren
-        let vis_radius = 10; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
+        let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
             let distance = get_dist(state.bot, *floor_pos);
-            if distance <= vis_radius  {
-                self.known_positions.insert(*floor_pos, state.tick);
+            if distance <= vis_radius * vis_radius {
+                self.known_positions.insert(*floor_pos, PositionMemory {
+                    last_seen_tick: state.tick,
+                    vis_floor_count: state.floor.len(),
+                });
             }
+        }
+        // Alle sichtbaren Walls markieren
+        for wall_pos in &state.wall {
+            self.known_walls.insert(*wall_pos);
         }
 
         // self.known_positions.retain(|_, &mut last_seen| state.tick - last_seen < 250);
 
         // Check für das current target
         if let Some(target) = &self.current_target {
+            // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
+            self.exploration_target = None;
+            // Checks für curr target
             let reached = state.bot == target.position;
             let mut vivsible = false;
             for gem in state.visible_gems.iter() {
@@ -55,9 +72,10 @@ impl BotMemory {
                     vivsible = true;
                 }
             }
-            if reached || !vivsible {
+            if reached && !vivsible {
                 self.known_gems.remove(&target.position);
                 self.current_target = None;
+                eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
 
@@ -74,6 +92,7 @@ impl BotMemory {
         if !self.known_gems.is_empty() {
             if let Some(pos) = self.get_closest_gem(state) {
                 if let Some(gem) = self.known_gems.get(&pos) {
+                    // eprintln!("{:?}, {}", self.current_target, state.tick);
                     self.current_target = Some(GemMemory {
                         position: pos,
                         ttl: gem.ttl,
@@ -91,21 +110,10 @@ impl BotMemory {
     }
 
     pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
-        let closest = self
-            .known_gems
+        self.known_gems
             .keys()
-            .reduce(|k1, k2| {
-                // folds the iterator by applying the get_dist function
-                if get_dist(*k1, state.bot) <= get_dist(*k2, state.bot) {
-                    k1
-                } else {
-                    k2
-                }
-            })
-            .copied() // bc its a pointer
-            .unwrap(); // extracts from Option type
-        // TODO:
-        Some(closest)
+            .min_by_key(|pos| heuristic(**pos, state.bot))
+            .copied()
     }
 }
 
@@ -113,4 +121,7 @@ pub fn get_dist(a: [i32; 2], b: [i32; 2]) -> i32 {
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
     dx * dx + dy * dy
+}
+fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
+    (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
 }

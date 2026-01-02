@@ -177,23 +177,31 @@ fn astar(
 fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
+    let curr_floor_count = state.floor.len();
     let mut candidates = Vec::new();
-    for &floor_pos in &state.floor {
-        let seen: Option<&u32> = memory.known_positions.get(&floor_pos);
 
-        let interest_score = match seen {
-            None => 1000,
-            Some(&tick) => {
-                let age = curr_tick - tick;
+    
+    let mut all_positions: HashSet<[i32; 2]> = HashSet::new();
+
+    for &floor_pos in &state.floor {
+        let seen = memory.known_positions.get(&floor_pos);
+
+        let (interest_score, exploration_bonus) = match seen {
+            None => (1000, 500),
+            Some(&mem) => {
+                let age = curr_tick - mem.last_seen_tick;
                 // if age < 30 {
                 //     continue; // Kürzlichst besucht, nicht hingehen
                 // }
-                age
+                let floor_diff = (curr_floor_count as i32 - mem.vis_floor_count as i32).abs();
+                let exploration_bonus = floor_diff * 2;
+
+                (age, exploration_bonus as u32)
             }
         };
         let distance = heuristic(state.bot, floor_pos);
 
-        let score = interest_score as i32 - distance;
+        let score = interest_score as i32 + exploration_bonus as i32 - distance;
 
         candidates.push((floor_pos, score));
     }
@@ -208,13 +216,11 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
 
 pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> Direction {
     // Gibt es einen target gem?
-    let target_gem = match memory.get_target() { // müsst eeigenltich target heißen
-        Some(t) => {
-            t
-        },
+    let target_gem = match memory.get_target() {
+        // müsst eeigenltich target heißen
+        Some(t) => t,
         None => {
             // Kein Target Gem-> Exploreation
-            eprintln!("Started exploring, {:?}", state.tick);
             match memory.exploration_target {
                 Some(explored_pos) => explored_pos,
                 None => {
@@ -222,6 +228,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                     match get_exploration_target(state, memory) {
                         Some(new_target) => {
                             memory.exploration_target = Some(new_target);
+                            eprintln!("Started exploring, {:?}", state.tick);
                             new_target
                         }
                         None => {
@@ -231,7 +238,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                                 Direction::Down,
                                 Direction::Up,
                                 Direction::Left,
-                                Direction::Right
+                                Direction::Right,
                             ];
                             return directions[rng.random_range(0..directions.len())];
                             return Direction::Wait;
@@ -241,12 +248,13 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             }
         }
     };
+    eprintln!("Moving towards {:?}", target_gem);
 
-    let walls: HashSet<[i32; 2]> = state.wall.iter().cloned().collect();
+    let walls:&HashSet<[i32; 2]> = &memory.known_walls;
 
     // Finde den Weg mit A*
     let path = astar(state.bot, target_gem, &walls, width, height);
-    
+
     // Wenn wir einen Pfad gefunden haben:
     if let Some(path) = path {
         // path enthält: [Start, Schritt1, Schritt2, ..., Ziel]
@@ -267,6 +275,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                 }
             };
         } else {
+            eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
             // Ziel wurde erreicht
             return Direction::Wait;
         }
