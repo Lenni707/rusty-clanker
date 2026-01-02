@@ -208,7 +208,9 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
         };
         let distance = heuristic(state.bot, floor_pos);
 
-        let score = interest_score as i32 + exploration_bonus as i32 - distance;
+        let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 10;
+        // eprintln!("{spawn_bonus}");
+        let score = interest_score as i32 + exploration_bonus as i32 + spawn_bonus as i32 - distance;
 
         candidates.push((floor_pos, score));
     }
@@ -248,7 +250,6 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             }
         }
     };
-    eprintln!("Moving towards {:?}", target_gem);
 
     let walls:&HashSet<[i32; 2]> = &memory.known_walls;
 

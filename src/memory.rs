@@ -8,6 +8,7 @@ pub struct BotMemory {
     pub known_positions: HashMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
     pub exploration_target: Option<[i32; 2]>,
+    pub gem_spawn_heatmap: HashMap<[i32; 2], u32>
     // pub last_steps
 }
 #[derive(Debug, PartialEq)]
@@ -28,12 +29,15 @@ impl BotMemory {
             known_positions: HashMap::new(),
             known_walls: HashSet::new(),
             exploration_target: None,
+            gem_spawn_heatmap: HashMap::new(),
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
         // Alle Gems Markieren
         for gem in &state.visible_gems {
+            // Gems spawns in die Heatmap eintragen, 
+            *self.gem_spawn_heatmap.entry(gem.position).or_insert(0) += 1;
             self.known_gems.insert(
                 gem.position,
                 GemMemory {
@@ -72,10 +76,10 @@ impl BotMemory {
                     vivsible = true;
                 }
             }
-            if reached && !vivsible {
+            if reached && !vivsible { // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.known_gems.remove(&target.position);
                 self.current_target = None;
-                eprintln!("Target not there, {} {}", state.tick, vivsible)
+                //eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
 
