@@ -51,3 +51,8 @@ fn main() {
         stdout.flush().unwrap();
     }
 }
+
+
+// BEKANNTE BUGS:
+// Beim Exploren in keinen Bereichen ist der Bot stuck: Vielleicht die letzen Schritte zurück gehen? Randam laufen?
+// Feature Idee: Beim Exploren nicht vis_radius betrachen, sondern alles, aber entferntere Felder intressanter machen nach Kriterien wie bspw. ob dort eine Wall ist?

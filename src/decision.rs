@@ -226,6 +226,14 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                         }
                         None => {
                             eprintln!("Kein Exploration Target gefunden - 404 :/");
+                            let mut rng = rand::rng();
+                            let directions = [
+                                Direction::Down,
+                                Direction::Up,
+                                Direction::Left,
+                                Direction::Right
+                            ];
+                            return directions[rng.random_range(0..directions.len())];
                             return Direction::Wait;
                         }
                     }

@@ -36,14 +36,15 @@ impl BotMemory {
             );
         }
         // Alle Sichbaren Positionen markieren
-        let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
+        let vis_radius = 10; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
             let distance = get_dist(state.bot, *floor_pos);
-            if distance <= vis_radius {
+            if distance <= vis_radius  {
                 self.known_positions.insert(*floor_pos, state.tick);
             }
         }
-        // TODO: Lange nicht besuchte positionen löschen
+
+        // self.known_positions.retain(|_, &mut last_seen| state.tick - last_seen < 250);
 
         // Check für das current target
         if let Some(target) = &self.current_target {
