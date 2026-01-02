@@ -179,10 +179,30 @@ fn get_exploration_target(
     memory: &BotMemory
 ) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
+    let curr_tick = state.tick;
+    let mut candidates = Vec::new();
     for &floor_pos in &state.floor {
-        let seen = memory.known_positions.get(&floor_pos);
+        let seen: Option<&u32> = memory.known_positions.get(&floor_pos);
+
+        let interest_score = match seen {
+            None => 1000,
+            Some(&tick) => {
+                let age = curr_tick - tick;
+                if age < 30 {
+                    continue; // Kürzlichst besucht, nicht hingehen
+                }
+                age
+            }
+        };
+        let distance = heuristic(state.bot, floor_pos);
+
+        let score = interest_score as i32 - distance;
+
+        candidates.push((floor_pos, score));
     }
-    None
+    candidates.sort_by_key(|(_, score)| -score );
+
+    candidates.first().map(|(pos, _)| *pos)
 }
 
 
@@ -191,36 +211,21 @@ fn get_exploration_target(
 // =====================================================
 
 pub fn decide(state: &GameState, memory: &BotMemory, width: i32, height: i32) -> Direction {
-    // TODO: Config wird nur einmal am Anfang geschickt, am besten speichern :)
-    // let config = match &state.config {
-    //     Some(c) => c,
-    //     None => {
-    //         eprintln!("Keine Config gefunden...");
-    //         return Direction::Wait;
-    //     }
-    // };
-    // Gems werden nicht aus der state entnommen, sonder aus dem memory, damit entscheidungen langfristig getroffen werden können 
+    // Gibt es einen target gem?
     let target_gem = match memory.get_target() {
         Some(t) => t, 
         None => {
-            // TODO: Hier die explore funktion einbauen
-            let directions = [
-                Direction::Up,
-                Direction::Down,
-                Direction::Left,
-                Direction::Right,
-            ];
-            let mut rng = rand::rng();
-
-            return directions[rng.random_range(0..directions.len())];
+            // Exploren
+            match get_exploration_target(state, memory) {
+                Some(explored_pos) => explored_pos,
+                None => {
+                    eprintln!("Kein Exploration Target gefunden :/");
+                    return Direction::Wait
+                }
+            }
+            
         }
     };
-
-
-    // Wählen des Target Gems:
-    // TODO: Später hier den besten auswählen, nach distanz und ttl
-
-    // let target_gem = &state.visible_gems[0];
 
     let walls: HashSet<[i32; 2]> = state.wall.iter().cloned().collect();
 
@@ -231,8 +236,6 @@ pub fn decide(state: &GameState, memory: &BotMemory, width: i32, height: i32) ->
         &walls,
         width,
         height,
-        // config.width,
-        // config.height,
     );
 
     // Wenn wir einen Pfad gefunden haben:

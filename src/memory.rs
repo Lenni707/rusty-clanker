@@ -1,10 +1,11 @@
-use std::{collections::HashMap, string};
+use std::collections::HashMap;
 
 use crate::states::GameState;
 
 pub struct BotMemory {
     pub current_target: Option<GemMemory>,
     pub known_gems: HashMap<[i32; 2], GemMemory>,
+    pub known_positions: HashMap<[i32; 2], u32>,
     // pub explored_position: HashSet<[i32; 2]> // später für eine Logik, wenn kein Gem zu sehen ist
 }
 #[derive(Debug)]
@@ -18,10 +19,12 @@ impl BotMemory {
         BotMemory {
             current_target: None,
             known_gems: HashMap::new(),
+            known_positions: HashMap::new(),
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
+        // Alle Gems Markieren
         for gem in &state.visible_gems {
             self.known_gems.insert(
                 gem.position,
@@ -31,10 +34,19 @@ impl BotMemory {
                 }
             );
         }
+        // Alle Sichbaren Positionen markieren
+        let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
+        for floor_pos in &state.floor {
+            let distance = get_dist(state.bot, *floor_pos);
+            if distance <= vis_radius {
+                self.known_positions.insert(*floor_pos, state.tick);
+            }
+        }
+        // TODO: Lange nicht besuchte positionen löschen
+
         // Check für das current target
         if let Some(target) = &self.current_target {
             let reached = state.bot == target.position;
-            // TODO: Hier vielleicht noch einen check: Ist das target überhaupt sichbar?
             let mut vivsible = false;
             for gem in state.visible_gems.iter() {
                 if gem.position == target.position {
