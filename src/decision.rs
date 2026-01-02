@@ -223,7 +223,7 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
 // Entscheidungsfunktion für den Bot
 // =====================================================
 
-pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> Direction {
+pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> (Direction, Option<Vec<[i32; 2]>>) {
     // Gibt es einen target gem?
     let target_gem = match memory.get_target() {
         // müsst eeigenltich target heißen
@@ -242,8 +242,8 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                         }
                         None => {
                             eprintln!("Kein Exploration Target gefunden - 404 :/");
-                            return move_random();
-                            return Direction::Wait;
+                            return (move_random(), None);
+                            // return Direction::Wait;
                         }
                     }
                 }
@@ -266,19 +266,19 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             let dy = next_step[1] - state.bot[1];
 
             return match (dx, dy) {
-                (1, 0) => Direction::Right, // X+1 = rechts
-                (-1, 0) => Direction::Left, // X-1 = links
-                (0, 1) => Direction::Down,  // Y+1 = unten
-                (0, -1) => Direction::Up,   // Y-1 = oben
+                (1, 0) => (Direction::Right, Some(path)), // X+1 = rechts
+                (-1, 0) =>( Direction::Left, Some(path)), // X-1 = links
+                (0, 1) => (Direction::Down, Some(path)),  // Y+1 = unten
+                (0, -1) =>( Direction::Up, Some(path)),   // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
-                    return move_random();
+                    return (move_random(), None);
                 }
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
             // Ziel wurde erreicht
-            return move_random();
+            return (move_random(), None);
         }
     }
     eprintln!("Es wurde kein Pfad gefunden :/");
@@ -295,7 +295,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             eprintln!("DISCRAPENCY: {:?}", gem.position)
         }
     }
-    Direction::Wait
+    (Direction::Wait, None)
 }
 
 fn move_random() -> Direction {
