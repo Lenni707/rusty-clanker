@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::states::GameState;
 
 pub struct BotMemory {
     pub current_target: Option<GemMemory>,
-    pub known_gems: HashMap<[i32; 2], GemMemory>,
-    pub known_positions: HashMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
+    pub known_gems: BTreeMap<[i32; 2], GemMemory>,
+    pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
     pub exploration_target: Option<[i32; 2]>,
-    pub gem_spawn_heatmap: HashMap<[i32; 2], u32>
+    pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>
     // pub last_steps
 }
 #[derive(Debug, PartialEq)]
@@ -25,11 +25,11 @@ impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
             current_target: None,
-            known_gems: HashMap::new(),
-            known_positions: HashMap::new(),
+            known_gems: BTreeMap::new(),
+            known_positions: BTreeMap::new(),
             known_walls: HashSet::new(),
             exploration_target: None,
-            gem_spawn_heatmap: HashMap::new(),
+            gem_spawn_heatmap: BTreeMap::new(),
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -114,10 +114,15 @@ impl BotMemory {
     }
 
     pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
-        self.known_gems
-            .keys()
-            .min_by_key(|pos| heuristic(**pos, state.bot))
-            .copied()
+        let mut gems: Vec<_> = self.known_gems.keys().copied().collect();
+        gems.sort_by_key(|&[x, y]| (x, y)); // Sortiere deterministisch
+        
+        gems.into_iter()
+            .min_by_key(|pos| {
+                let dist = heuristic(*pos, state.bot);
+                // Bei gleicher Distanz: Position als Tie-Breaker
+                (dist, pos[0], pos[1])
+            })
     }
 }
 

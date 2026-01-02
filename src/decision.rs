@@ -50,6 +50,9 @@ impl Ord for Node {
             .f_cost
             .cmp(&self.f_cost)
             .then_with(|| other.g_cost.cmp(&self.g_cost)) // mein Gott
+            // Für Determismus
+            .then_with(|| self.position[0].cmp(&other.position[0]))
+            .then_with(|| self.position[1].cmp(&other.position[1]))
     }
 }
 
@@ -181,14 +184,17 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
     let mut candidates = Vec::new();
 
     
-    let mut all_positions: HashSet<[i32; 2]> = HashSet::new();
+    let mut all_positions: Vec<[i32; 2]>= Vec::new();
 
     for &floor_pos in &state.floor {
-        all_positions.insert(floor_pos);
+        all_positions.push(floor_pos);
     }
     for &floor_pos in memory.known_positions.keys() {
-        all_positions.insert(floor_pos);
+        all_positions.push(floor_pos);
     }
+    // Sortieren für Determismus
+    all_positions.sort_by_key(|&[x, y]| (x, y));
+    all_positions.dedup();
 
     for &floor_pos in &all_positions {
         let seen = memory.known_positions.get(&floor_pos);
@@ -214,7 +220,11 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
 
         candidates.push((floor_pos, score));
     }
-    candidates.sort_by_key(|(_, score)| -score);
+    candidates.sort_by(|(pos_a, score_a), (pos_b, score_b)| {
+        score_b.cmp(score_a)  // Höherer Score zuerst
+            .then_with(|| pos_a[0].cmp(&pos_b[0]))  // Bei Gleichstand: x-Koordinate
+            .then_with(|| pos_a[1].cmp(&pos_b[1]))  // Dann y-Koordinate
+    });
 
     candidates.first().map(|(pos, _)| *pos)
 }
@@ -300,14 +310,15 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
 
 fn move_random() -> Direction {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK TO RANDOM MOVMENT");
-    let mut rng = rand::rng();
-    let directions = [
-        Direction::Down,
-        Direction::Up,
-        Direction::Left,
-        Direction::Right,
-    ];
-    return directions[rng.random_range(0..directions.len())];
+    // let mut rng = rand::rng();
+    // let directions = [
+    //     Direction::Down,
+    //     Direction::Up,
+    //     Direction::Left,
+    //     Direction::Right,
+    // ];
+    // return directions[rng.random_range(0..directions.len())];
+    Direction::Down
 }
 
 // pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
