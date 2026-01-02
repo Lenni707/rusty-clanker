@@ -174,10 +174,7 @@ fn astar(
 // EXPLORATION von unbekannten Orten (spooky)
 // =====================================================
 
-fn get_exploration_target(
-    state: &GameState,
-    memory: &BotMemory
-) -> Option<[i32; 2]> {
+fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
     let mut candidates = Vec::new();
@@ -188,9 +185,9 @@ fn get_exploration_target(
             None => 1000,
             Some(&tick) => {
                 let age = curr_tick - tick;
-                if age < 30 {
-                    continue; // Kürzlichst besucht, nicht hingehen
-                }
+                // if age < 30 {
+                //     continue; // Kürzlichst besucht, nicht hingehen
+                // }
                 age
             }
         };
@@ -200,11 +197,10 @@ fn get_exploration_target(
 
         candidates.push((floor_pos, score));
     }
-    candidates.sort_by_key(|(_, score)| -score );
+    candidates.sort_by_key(|(_, score)| -score);
 
     candidates.first().map(|(pos, _)| *pos)
 }
-
 
 // =====================================================
 // Entscheidungsfunktion für den Bot
@@ -212,11 +208,14 @@ fn get_exploration_target(
 
 pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> Direction {
     // Gibt es einen target gem?
-    let target_gem = match memory.get_target() {
-        Some(t) => t, 
+    let target_gem = match memory.get_target() { // müsst eeigenltich target heißen
+        Some(t) => {
+            t
+        },
         None => {
             // Kein Target Gem-> Exploreation
-            match memory.exploration_target{
+            eprintln!("Started exploring, {:?}", state.tick);
+            match memory.exploration_target {
                 Some(explored_pos) => explored_pos,
                 None => {
                     // Kein Aktuelles Target: Neues Target finden
@@ -224,7 +223,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                         Some(new_target) => {
                             memory.exploration_target = Some(new_target);
                             new_target
-                        },
+                        }
                         None => {
                             eprintln!("Kein Exploration Target gefunden - 404 :/");
                             return Direction::Wait;
@@ -232,21 +231,14 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                     }
                 }
             }
-            
         }
     };
 
     let walls: HashSet<[i32; 2]> = state.wall.iter().cloned().collect();
 
     // Finde den Weg mit A*
-    let path = astar(
-        state.bot,
-        target_gem,
-        &walls,
-        width,
-        height,
-    );
-
+    let path = astar(state.bot, target_gem, &walls, width, height);
+    
     // Wenn wir einen Pfad gefunden haben:
     if let Some(path) = path {
         // path enthält: [Start, Schritt1, Schritt2, ..., Ziel]
@@ -257,16 +249,17 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             let dy = next_step[1] - state.bot[1];
 
             return match (dx, dy) {
-                 (1, 0) => Direction::Right,   // X+1 = rechts
-                (-1, 0) => Direction::Left,   // X-1 = links
-                (0, 1) => Direction::Down,    // Y+1 = unten
-                (0, -1) => Direction::Up,     // Y-1 = oben
+                (1, 0) => Direction::Right, // X+1 = rechts
+                (-1, 0) => Direction::Left, // X-1 = links
+                (0, 1) => Direction::Down,  // Y+1 = unten
+                (0, -1) => Direction::Up,   // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
                     Direction::Wait
                 }
-            }
-        } else { // Ziel wurde erreicht
+            };
+        } else {
+            // Ziel wurde erreicht
             return Direction::Wait;
         }
     }
@@ -286,21 +279,6 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
     }
     Direction::Wait
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
 //     let bot = state.bot;

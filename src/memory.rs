@@ -6,10 +6,9 @@ pub struct BotMemory {
     pub current_target: Option<GemMemory>,
     pub known_gems: HashMap<[i32; 2], GemMemory>,
     pub known_positions: HashMap<[i32; 2], u32>,
-    pub exploration_target: Option<[i32; 2]>
-    // pub explored_position: HashSet<[i32; 2]> // später für eine Logik, wenn kein Gem zu sehen ist
+    pub exploration_target: Option<[i32; 2]>, // pub explored_position: HashSet<[i32; 2]> // später für eine Logik, wenn kein Gem zu sehen ist
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct GemMemory {
     pub position: [i32; 2],
     pub ttl: i32,
@@ -30,10 +29,10 @@ impl BotMemory {
         for gem in &state.visible_gems {
             self.known_gems.insert(
                 gem.position,
-                GemMemory { 
-                    position: gem.position, 
-                    ttl: gem.ttl
-                }
+                GemMemory {
+                    position: gem.position,
+                    ttl: gem.ttl,
+                },
             );
         }
         // Alle Sichbaren Positionen markieren
@@ -68,19 +67,16 @@ impl BotMemory {
                 self.exploration_target = None;
             }
             // Maybe noch etwas machen, dass wenn es gesehen wurde das dann nicht weiter gegangen wird?
-
-        } 
+        }
 
         // Ziel wählen - always pick closest gem
         if !self.known_gems.is_empty() {
             if let Some(pos) = self.get_closest_gem(state) {
                 if let Some(gem) = self.known_gems.get(&pos) {
-                    self.current_target = Some(
-                        GemMemory { 
-                            position: pos,
-                            ttl: gem.ttl 
-                        }
-                    );
+                    self.current_target = Some(GemMemory {
+                        position: pos,
+                        ttl: gem.ttl,
+                    });
                 }
             }
         }
@@ -89,14 +85,16 @@ impl BotMemory {
     pub fn get_target(&self) -> Option<[i32; 2]> {
         match &self.current_target {
             Some(gem) => Some(gem.position),
-            None => None
+            None => None,
         }
     }
 
     pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
-        let closest = self.known_gems
+        let closest = self
+            .known_gems
             .keys()
-            .reduce(|k1, k2| { // folds the iterator by applying the get_dist function
+            .reduce(|k1, k2| {
+                // folds the iterator by applying the get_dist function
                 if get_dist(*k1, state.bot) <= get_dist(*k2, state.bot) {
                     k1
                 } else {
@@ -105,6 +103,7 @@ impl BotMemory {
             })
             .copied() // bc its a pointer
             .unwrap(); // extracts from Option type
+        // TODO:
         Some(closest)
     }
 }

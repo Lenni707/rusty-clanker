@@ -9,7 +9,7 @@ pub struct GameState {
     pub floor: Vec<[i32; 2]>,
     pub visible_gems: Vec<Gem>,
 }
- 
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub width: i32,
