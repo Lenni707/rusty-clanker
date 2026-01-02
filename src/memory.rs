@@ -6,6 +6,7 @@ pub struct BotMemory {
     pub current_target: Option<GemMemory>,
     pub known_gems: HashMap<[i32; 2], GemMemory>,
     pub known_positions: HashMap<[i32; 2], u32>,
+    pub exploration_target: Option<[i32; 2]>
     // pub explored_position: HashSet<[i32; 2]> // später für eine Logik, wenn kein Gem zu sehen ist
 }
 #[derive(Debug)]
@@ -20,6 +21,7 @@ impl BotMemory {
             current_target: None,
             known_gems: HashMap::new(),
             known_positions: HashMap::new(),
+            exploration_target: None,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -58,6 +60,16 @@ impl BotMemory {
                 self.current_target = None;
             }
         }
+
+        // Exploratin Check: Wurde das Ziel erreicht?
+        if let Some(explore_pos) = self.exploration_target {
+            // Ist das Target erreicht?
+            if state.bot == explore_pos {
+                self.exploration_target = None;
+            }
+            // Maybe noch etwas machen, dass wenn es gesehen wurde das dann nicht weiter gegangen wird?
+
+        } 
 
         // Ziel wählen - always pick closest gem
         if !self.known_gems.is_empty() {

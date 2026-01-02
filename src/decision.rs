@@ -210,17 +210,26 @@ fn get_exploration_target(
 // Entscheidungsfunktion für den Bot
 // =====================================================
 
-pub fn decide(state: &GameState, memory: &BotMemory, width: i32, height: i32) -> Direction {
+pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> Direction {
     // Gibt es einen target gem?
     let target_gem = match memory.get_target() {
         Some(t) => t, 
         None => {
-            // Exploren
-            match get_exploration_target(state, memory) {
+            // Kein Target Gem-> Exploreation
+            match memory.exploration_target{
                 Some(explored_pos) => explored_pos,
                 None => {
-                    eprintln!("Kein Exploration Target gefunden :/");
-                    return Direction::Wait
+                    // Kein Aktuelles Target: Neues Target finden
+                    match get_exploration_target(state, memory) {
+                        Some(new_target) => {
+                            memory.exploration_target = Some(new_target);
+                            new_target
+                        },
+                        None => {
+                            eprintln!("Kein Exploration Target gefunden - 404 :/");
+                            return Direction::Wait;
+                        }
+                    }
                 }
             }
             

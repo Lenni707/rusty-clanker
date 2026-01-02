@@ -46,7 +46,7 @@ fn main() {
         
         memory.update(&state);
 
-        let dir = decide(&state, &memory, width, height);
+        let dir = decide(&state, &mut memory, width, height);
         println!("{}", dir.as_geo());
         stdout.flush().unwrap();
     }
