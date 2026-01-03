@@ -169,6 +169,8 @@ fn astar(
             }
         }
     }
+    // Es kann aktuell sein, das dieser Fehler angezeigt wird. Das ist erstmal okay, und liegt an der Art wie Frontiers implementiert sind:
+    // Sie können gelgentlich auf Feldern sein, welche Walls sind.
     eprintln!("UNEXPECTED BEHAIVIOR: Keinen Weg zum Ziel gefunden");
     None
 }
@@ -177,19 +179,24 @@ fn astar(
 // EXPLORATION von unbekannten Orten (spooky)
 // =====================================================
 
-fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32; 2]> {
+fn get_exploration_target(state: &GameState, memory: &BotMemory, width: i32, height: i32) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
     let curr_floor_count = state.floor.len();
     let mut candidates = Vec::new();
 
-    
+    // Frontiers holen, also Positionen mit vielen Nachbarn
+    let frontiers = get_frontiers(memory, width, height);
+
     let mut all_positions: Vec<[i32; 2]>= Vec::new();
 
     for &floor_pos in &state.floor {
         all_positions.push(floor_pos);
     }
     for &floor_pos in memory.known_positions.keys() {
+        all_positions.push(floor_pos);
+    }
+    for &floor_pos in &frontiers {
         all_positions.push(floor_pos);
     }
     // Sortieren für Determismus
@@ -199,13 +206,22 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
     for &floor_pos in &all_positions {
         let seen = memory.known_positions.get(&floor_pos);
 
+        let is_frontier = frontiers.contains(&floor_pos);
+
         let (interest_score, exploration_bonus) = match seen {
-            None => (1000, 500),
+            None => {
+                // Wenn noch nie gesehen
+                if is_frontier {
+                    (2000, 500)
+                } else {
+                    (1000, 500)
+                }
+            },
             Some(&mem) => {
                 let age = curr_tick - mem.last_seen_tick;
-                // if age < 30 {
-                //     continue; // Kürzlichst besucht, nicht hingehen
-                // }
+                if age < 30 {
+                    continue; // Kürzlichst besucht, nicht hingehen
+                }
                 let floor_diff = (curr_floor_count as i32 - mem.vis_floor_count as i32).abs();
                 let exploration_bonus = floor_diff * 2;
 
@@ -214,12 +230,13 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
         };
         let distance = heuristic(state.bot, floor_pos);
 
-        let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 10;
+        let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 50;
         // eprintln!("{spawn_bonus}");
         let score = interest_score as i32 + exploration_bonus as i32 + spawn_bonus as i32 - distance;
 
         candidates.push((floor_pos, score));
     }
+
     candidates.sort_by(|(pos_a, score_a), (pos_b, score_b)| {
         score_b.cmp(score_a)  // Höherer Score zuerst
             .then_with(|| pos_a[0].cmp(&pos_b[0]))  // Bei Gleichstand: x-Koordinate
@@ -229,6 +246,33 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32;
     candidates.first().map(|(pos, _)| *pos)
 }
 
+pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2]> {
+    // Findet Felder mit unbekannten nachbarn
+    let mut frontiers = Vec::new();
+
+    for &known_pos in memory.known_positions.keys() {
+        // Alle Nachbarn prüfen
+        for [dx, dy] in [[0, 1], [0, -1], [1, 0], [-1, 0]] {
+            let neighbor = [known_pos[0] + dx, known_pos[1] + dy];
+
+            // Bounds Check
+            if neighbor[0] < 0 || neighbor[0] >= width
+            || neighbor[1] < 0 || neighbor[1] >= height {
+                continue;
+            }
+
+            let is_unknown = !memory.known_positions.contains_key(&neighbor);
+            let is_no_wall = !memory.known_walls.contains(&neighbor);
+
+            if is_no_wall && is_unknown {
+                frontiers.push(neighbor);
+            }
+        }
+    }
+    frontiers.sort_by_key(|&[x, y]| (x, y));
+    frontiers.dedup();
+    frontiers
+}
 // =====================================================
 // Entscheidungsfunktion für den Bot
 // =====================================================
@@ -244,7 +288,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                 Some(explored_pos) => explored_pos,
                 None => {
                     // Kein Aktuelles Target: Neues Target finden
-                    match get_exploration_target(state, memory) {
+                    match get_exploration_target(state, memory, width, height) {
                         Some(new_target) => {
                             memory.exploration_target = Some(new_target);
                             eprintln!("Started exploring, {:?}", state.tick);
@@ -291,6 +335,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
             return (move_random(), None);
         }
     }
+    memory.exploration_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     eprintln!("{:?}", memory.known_gems);
