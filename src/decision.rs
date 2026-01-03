@@ -4,8 +4,6 @@ use std::{
     i32,
 };
 
-use rand::Rng;
-
 use crate::{memory::BotMemory, states::GameState};
 
 #[derive(Clone, Copy)]
