@@ -48,7 +48,7 @@ fn main() {
         memory.update(&state);
 
         let (dir, path) = decide(&state, &mut memory, width, height);
-        
+
         // Debugging: Path highlighten
         let mut highlights = Vec::new();
 
@@ -59,10 +59,15 @@ fn main() {
         }
         // Gem Target
         if let Some(gem_target) = &memory.current_target {
-            highlights.push(json!([gem_target.position[0], gem_target.position[1], "#ff0000"]));
+            highlights.push(json!([
+                gem_target.position[0],
+                gem_target.position[1],
+                "#ff0000"
+            ]));
         } // Path
         if let Some(path) = path {
-            for pos in path.iter().skip(1) { // skip(1) um Startposition zu überspringen
+            for pos in path.iter().skip(1) {
+                // skip(1) um Startposition zu überspringen
                 highlights.push(json!([pos[0], pos[1], path_color]));
             }
         }
@@ -83,3 +88,4 @@ fn main() {
 // Dieses Feature glaube ich ist redundant und vielleicht gar nicht sooo lokrativ, da neuen Felder so weniger oft gefunden werden
 // PROBLEMATISCHE SEEDS:
 // 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb, bh34pf, 1iv223z
+// c1h011  bug, bot ignoriert eine gem, obwohl er ihn anvisiert und geht lieber wieter exploren

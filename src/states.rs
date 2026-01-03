@@ -8,7 +8,7 @@ pub struct GameState {
     pub wall: Vec<[i32; 2]>,
     pub floor: Vec<[i32; 2]>,
     pub visible_gems: Vec<Gem>,
-    pub visible_bots: Vec<EnemyBot>,
+    pub visible_bots: Option<Vec<EnemyBot>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,10 +30,4 @@ pub struct Gem {
 pub struct EnemyBot {
     pub position: [i32; 2],
     pub emoji: String,
-}
-
-impl GameState {
-    pub fn is_wall(&self, pos: [i32; 2]) -> bool {
-        self.wall.contains(&pos)
-    }
 }

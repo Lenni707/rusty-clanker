@@ -177,7 +177,12 @@ pub fn astar(
 // EXPLORATION von unbekannten Orten (spooky)
 // =====================================================
 
-fn get_exploration_target(state: &GameState, memory: &BotMemory, width: i32, height: i32) -> Option<[i32; 2]> {
+fn get_exploration_target(
+    state: &GameState,
+    memory: &BotMemory,
+    width: i32,
+    height: i32,
+) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
     let curr_floor_count = state.floor.len();
@@ -186,7 +191,7 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory, width: i32, hei
     // Frontiers holen, also Positionen mit vielen Nachbarn
     let frontiers = get_frontiers(memory, width, height);
 
-    let mut all_positions: Vec<[i32; 2]>= Vec::new();
+    let mut all_positions: Vec<[i32; 2]> = Vec::new();
 
     for &floor_pos in &state.floor {
         all_positions.push(floor_pos);
@@ -214,7 +219,7 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory, width: i32, hei
                 } else {
                     (1000, 500)
                 }
-            },
+            }
             Some(&mem) => {
                 let age = curr_tick - mem.last_seen_tick;
                 if age < 30 {
@@ -230,15 +235,17 @@ fn get_exploration_target(state: &GameState, memory: &BotMemory, width: i32, hei
 
         let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 50;
         // eprintln!("{spawn_bonus}");
-        let score = interest_score as i32 + exploration_bonus as i32 + spawn_bonus as i32 - distance;
+        let score =
+            interest_score as i32 + exploration_bonus as i32 + spawn_bonus as i32 - distance;
 
         candidates.push((floor_pos, score));
     }
 
     candidates.sort_by(|(pos_a, score_a), (pos_b, score_b)| {
-        score_b.cmp(score_a)  // Höherer Score zuerst
-            .then_with(|| pos_a[0].cmp(&pos_b[0]))  // Bei Gleichstand: x-Koordinate
-            .then_with(|| pos_a[1].cmp(&pos_b[1]))  // Dann y-Koordinate
+        score_b
+            .cmp(score_a) // Höherer Score zuerst
+            .then_with(|| pos_a[0].cmp(&pos_b[0])) // Bei Gleichstand: x-Koordinate
+            .then_with(|| pos_a[1].cmp(&pos_b[1])) // Dann y-Koordinate
     });
 
     candidates.first().map(|(pos, _)| *pos)
@@ -254,8 +261,7 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
             let neighbor = [known_pos[0] + dx, known_pos[1] + dy];
 
             // Bounds Check
-            if neighbor[0] < 0 || neighbor[0] >= width
-            || neighbor[1] < 0 || neighbor[1] >= height {
+            if neighbor[0] < 0 || neighbor[0] >= width || neighbor[1] < 0 || neighbor[1] >= height {
                 continue;
             }
 
@@ -275,7 +281,12 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
 // Entscheidungsfunktion für den Bot
 // =====================================================
 
-pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32) -> (Direction, Option<Vec<[i32; 2]>>) {
+pub fn decide(
+    state: &GameState,
+    memory: &mut BotMemory,
+    width: i32,
+    height: i32,
+) -> (Direction, Option<Vec<[i32; 2]>>) {
     // Gibt es einen target gem?
     let target_gem = match memory.get_target() {
         // müsst eeigenltich target heißen
@@ -294,7 +305,7 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
                         }
                         None => {
                             eprintln!("Kein Exploration Target gefunden - 404 :/");
-                            return (move_random(), None);
+                            return (movement_fallback(&memory, &state), None);
                             // return Direction::Wait;
                         }
                     }
@@ -304,9 +315,16 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
     };
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
-    // Den Gegernerischen Bot in die Walls hinzu fügen
 
-    walls.extend(state.visible_bots.iter().map(|bot| bot.position));
+    // Den Gegernerischen Bot in die Walls hinzu fügen
+    if let Some(bots) = &state.visible_bots {
+        for bot in bots {
+            let dist_bots = heuristic(state.bot, bot.position);
+            if dist_bots < 3 { 
+                walls.insert(bot.position);
+            }
+        }
+    }
 
     // Finde den Weg mit A*
     let path = astar(state.bot, target_gem, &walls, width, height);
@@ -322,18 +340,18 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
 
             return match (dx, dy) {
                 (1, 0) => (Direction::Right, Some(path)), // X+1 = rechts
-                (-1, 0) =>( Direction::Left, Some(path)), // X-1 = links
+                (-1, 0) => (Direction::Left, Some(path)), // X-1 = links
                 (0, 1) => (Direction::Down, Some(path)),  // Y+1 = unten
-                (0, -1) =>( Direction::Up, Some(path)),   // Y-1 = oben
+                (0, -1) => (Direction::Up, Some(path)),   // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
-                    return (move_random(), None);
+                    return (movement_fallback(&memory, state), None);
                 }
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
             // Ziel wurde erreicht
-            return (move_random(), None);
+            return (movement_fallback(&memory, state), None);
         }
     }
     memory.exploration_target = None;
@@ -354,15 +372,47 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
     (Direction::Wait, None)
 }
 
-fn move_random() -> Direction {
-    eprintln!("UNEXPECTED BEHAVIOR: FALLBACK TO RANDOM MOVMENT");
-    // let mut rng = rand::rng();
-    // let directions = [
-    //     Direction::Down,
-    //     Direction::Up,
-    //     Direction::Left,
-    //     Direction::Right,
-    // ];
-    // return directions[rng.random_range(0..directions.len())];
-    Direction::Down
+fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
+    eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
+    
+    let config = state.config.as_ref().unwrap();
+    let center = [config.width / 2, config.height / 2];
+    let current = state.bot;
+    
+    // Richtung zur Mitte
+    let dx = center[0] - current[0];
+    let dy = center[1] - current[1];
+    
+    // Priorisierte Richtungen basierend auf Distanz zur Mitte
+    let preferred_directions = if dx.abs() > dy.abs() {
+        if dx > 0 {
+            vec![Direction::Right, Direction::Down, Direction::Up, Direction::Left]
+        } else {
+            vec![Direction::Left, Direction::Down, Direction::Up, Direction::Right]
+        }
+    } else {
+        if dy > 0 {
+            vec![Direction::Down, Direction::Right, Direction::Left, Direction::Up]
+        } else {
+            vec![Direction::Up, Direction::Right, Direction::Left, Direction::Down]
+        }
+    };
+    
+    // Finde erste gültige Richtung aus den priorisierten
+    for dir in preferred_directions {
+        let next_pos = match dir {
+            Direction::Right => [current[0] + 1, current[1]],
+            Direction::Left => [current[0] - 1, current[1]],
+            Direction::Down => [current[0], current[1] + 1],
+            Direction::Up => [current[0], current[1] - 1],
+            Direction::Wait => current,
+        };
+        
+        if is_in_bounds(next_pos, config.width, config.height) 
+           && !memory.known_walls.contains(&next_pos) {
+            return dir;
+        }
+    }
+    
+    Direction::Wait // Wenn alle Richtungen blockiert sind
 }

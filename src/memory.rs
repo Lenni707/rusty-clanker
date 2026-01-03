@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
-use crate::states::{GameState, Config};
+use crate::states::GameState;
 
 use crate::decision::astar;
 
@@ -10,8 +10,7 @@ pub struct BotMemory {
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
     pub exploration_target: Option<[i32; 2]>,
-    pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>
-    // pub last_steps
+    pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
 }
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
@@ -38,7 +37,7 @@ impl BotMemory {
     pub fn update(&mut self, state: &GameState) {
         // Alle Gems Markieren
         for gem in &state.visible_gems {
-            // Gems spawns in die Heatmap eintragen, 
+            // Gems spawns in die Heatmap eintragen,
             *self.gem_spawn_heatmap.entry(gem.position).or_insert(0) += 1;
             self.known_gems.insert(
                 gem.position,
@@ -51,13 +50,13 @@ impl BotMemory {
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
-            let distance = get_dist(state.bot, *floor_pos);
-            self.known_positions.insert(*floor_pos, PositionMemory {
-                last_seen_tick: state.tick,
-                vis_floor_count: state.floor.len(),
-            });
-            // if distance <= vis_radius * vis_radius {
-            // }
+            self.known_positions.insert(
+                *floor_pos,
+                PositionMemory {
+                    last_seen_tick: state.tick,
+                    vis_floor_count: state.floor.len(),
+                },
+            );
         }
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
@@ -75,17 +74,15 @@ impl BotMemory {
             let mut vivsible = false;
             for gem in state.visible_gems.iter() {
                 if gem.position == target.position {
-                    for vis_pos in state.floor.iter() {
-                        if &gem.position == vis_pos {
-                            vivsible = true;
-                        }
-                    }
+                    vivsible = true;
+                    break;
                 }
             }
-            if reached || !vivsible { // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
+            if reached || (!vivsible && state.floor.contains(&target.position)) {
+                // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.known_gems.remove(&target.position);
                 self.current_target = None;
-                //eprintln!("Target not there, {} {}", state.tick, vivsible)
+                eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
 
@@ -121,14 +118,25 @@ impl BotMemory {
 
     pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
         let mut gems: Vec<_> = self.known_gems.keys().copied().collect();
+        // Wenn gems leer sind
+        if gems.len() < 1 { return None; }
         gems.sort_by_key(|&[x, y]| (x, y)); // Sortiere deterministisch
-        
-        gems.into_iter()
-            .min_by_key(|pos| {
-                let dist = heuristic(*pos, state.bot);
-                // Bei gleicher Distanz: Position als Tie-Breaker
-                (dist, pos[0], pos[1])
-            })
+
+        let mut closest: Option<[i32; 2]> = None;
+
+        for gem in gems {
+            closest = match closest {
+                None => Some(gem),
+                Some(current_closest) => {
+                    match get_closer_pos(state.bot, current_closest, gem, self, &state) {
+                        Some(closer) => Some(closer),
+                        None => Some(current_closest)
+                    }
+                }
+            }
+        }
+
+        closest
     }
 }
 
@@ -137,22 +145,34 @@ pub fn get_dist(a: [i32; 2], b: [i32; 2]) -> i32 {
     let dy = a[1] - b[1];
     dx * dx + dy * dy
 }
-fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
+fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
 }
 
 pub fn get_closer_pos(
-    goal: [i32; 2], 
-    a: [i32; 2], 
+    goal: [i32; 2],
+    a: [i32; 2],
     b: [i32; 2],
     memory: &BotMemory,
-    config: &Config
-) -> [i32; 2] {
-    let shorter = if astar(a, goal, &memory.known_walls, config.width, config.height).unwrap().length() <= astar(b, goal, &memory.known_walls, config.width, config.height)
-    {
-        a
-    } else {
-        b
-    };
-    shorter
+    state: &GameState,
+) -> Option<[i32; 2]> {
+    if let Some(config) = &state.config {  
+        let path_a = astar(a, goal, &memory.known_walls, config.width, config.height);
+        let path_b = astar(b, goal, &memory.known_walls, config.width, config.height);
+
+        let shorter = match (path_a, path_b) {
+            (Some(pa), Some(pb)) => {
+                if pa.len() <= pb.len() {
+                    Some(a)
+                } else {
+                    Some(b)
+                }
+            }
+            (Some(_), None) => Some(a),
+            (None, Some(_)) => Some(b),
+            (None, None) => { eprintln!("both positions cant be reached"); None }
+        };
+        shorter
+    } else { return None }
+    
 }
