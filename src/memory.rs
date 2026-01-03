@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::states::GameState;
+use crate::states::{GameState, Config};
+
+use crate::decision::astar;
 
 pub struct BotMemory {
     pub current_target: Option<GemMemory>,
@@ -47,7 +49,7 @@ impl BotMemory {
             );
         }
         // Alle Sichbaren Positionen markieren
-        let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
+        // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
             let distance = get_dist(state.bot, *floor_pos);
             self.known_positions.insert(*floor_pos, PositionMemory {
@@ -73,10 +75,14 @@ impl BotMemory {
             let mut vivsible = false;
             for gem in state.visible_gems.iter() {
                 if gem.position == target.position {
-                    vivsible = true;
+                    for vis_pos in state.floor.iter() {
+                        if &gem.position == vis_pos {
+                            vivsible = true;
+                        }
+                    }
                 }
             }
-            if reached && !vivsible { // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
+            if reached || !vivsible { // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.known_gems.remove(&target.position);
                 self.current_target = None;
                 //eprintln!("Target not there, {} {}", state.tick, vivsible)
@@ -133,4 +139,20 @@ pub fn get_dist(a: [i32; 2], b: [i32; 2]) -> i32 {
 }
 fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
+}
+
+pub fn get_closer_pos(
+    goal: [i32; 2], 
+    a: [i32; 2], 
+    b: [i32; 2],
+    memory: &BotMemory,
+    config: &Config
+) -> [i32; 2] {
+    let shorter = if astar(a, goal, &memory.known_walls, config.width, config.height).unwrap().length() <= astar(b, goal, &memory.known_walls, config.width, config.height)
+    {
+        a
+    } else {
+        b
+    };
+    shorter
 }

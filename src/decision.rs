@@ -84,7 +84,7 @@ fn is_in_bounds(pos: [i32; 2], width: i32, height: i32) -> bool {
 // A* Pathfinding: Hauptalgorythmus
 // =====================================================
 
-fn astar(
+pub fn astar(
     start: [i32; 2],
     goal: [i32; 2],
     walls: &HashSet<[i32; 2]>,
@@ -303,7 +303,10 @@ pub fn decide(state: &GameState, memory: &mut BotMemory, width: i32, height: i32
         }
     };
 
-    let walls:&HashSet<[i32; 2]> = &memory.known_walls;
+    let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
+    // Den Gegernerischen Bot in die Walls hinzu fügen
+
+    walls.extend(state.visible_bots.iter().map(|bot| bot.position));
 
     // Finde den Weg mit A*
     let path = astar(state.bot, target_gem, &walls, width, height);
@@ -363,68 +366,3 @@ fn move_random() -> Direction {
     // return directions[rng.random_range(0..directions.len())];
     Direction::Down
 }
-
-// pub fn decide_v1(state: &GameState, memory: &mut BotMemory) -> Direction {
-//     let bot = state.bot;
-//     let bot_pos = (bot[0], bot[1]);
-//     memory.mark_visited((bot[0], bot[1]));
-
-//     // Wenn ein Gems da ist: Hin gehen
-//     if let Some(gem) = state.visible_gems.first() {
-//         eprintln!("Visible gems: {}", state.visible_gems.len());
-//         // first da sonst idx out of range, sofern kein GEM das ist
-//         let gem_pos = gem.position;
-
-//         return move_towards(&bot_pos, (gem_pos[0], gem_pos[1]), &state);
-//     }
-//     // Wenn keine Gems vorhanden: Eine unbekannte, neue zufällige Richtung probieren
-//     let directions = [
-//         Direction::Up,
-//         Direction::Down,
-//         Direction::Left,
-//         Direction::Right,
-//     ];
-//     let mut rng = rand::rng();
-
-//     for dir in directions.choose_multiple(&mut rng, directions.len()) {
-//         let next_pos = match dir {
-//             Direction::Up => (bot[0], bot[1] - 1),
-//             Direction::Down => (bot[0], bot[1] + 1),
-//             Direction::Left => (bot[0] - 1, bot[1]),
-//             Direction::Right => (bot[0] + 1, bot[1]),
-//             _ => (bot[0], bot[1]),
-//         };
-//         return *dir;
-//         if !memory.is_visited(next_pos) {}
-//     }
-
-//     Direction::Wait
-// }
-// fn move_towards(c_pos: &(i32, i32), t_pos: (i32, i32), state: &GameState) -> Direction {
-//     let (cx, cy) = *c_pos;
-//     let (tx, ty) = t_pos;
-
-//     // Links
-//     if tx < cx && !state.is_wall([cx - 1, cy]) {
-//         return Direction::Left;
-//     }
-
-//     // Rechts
-//     if tx > cx && !state.is_wall([cx + 1, cy]) {
-//         return Direction::Right;
-//     }
-
-//     // Oben
-//     if ty < cy && !state.is_wall([cx, cy - 1]) {
-//         return Direction::Up;
-//     }
-
-//     // Unten
-//     if ty > cy && !state.is_wall([cx, cy + 1]) {
-//         return Direction::Down;
-//     }
-
-//     // Sollte nie passieren
-//     eprintln!("UNEXPECTED BEHAVIOR");
-//     Direction::Wait
-// }
