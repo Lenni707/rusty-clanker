@@ -50,12 +50,12 @@ impl BotMemory {
         let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
             let distance = get_dist(state.bot, *floor_pos);
-            if distance <= vis_radius * vis_radius {
-                self.known_positions.insert(*floor_pos, PositionMemory {
-                    last_seen_tick: state.tick,
-                    vis_floor_count: state.floor.len(),
-                });
-            }
+            self.known_positions.insert(*floor_pos, PositionMemory {
+                last_seen_tick: state.tick,
+                vis_floor_count: state.floor.len(),
+            });
+            // if distance <= vis_radius * vis_radius {
+            // }
         }
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
