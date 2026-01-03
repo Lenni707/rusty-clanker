@@ -89,3 +89,4 @@ fn main() {
 // PROBLEMATISCHE SEEDS:
 // 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb, bh34pf, 1iv223z
 // c1h011  bug, bot ignoriert eine gem, obwohl er ihn anvisiert und geht lieber wieter exploren
+// lywmv2 ich denke es ist ein fehler weil er, wenn er ein schritt vor dem gem war, ein neuen gesehen hat
