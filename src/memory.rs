@@ -123,7 +123,7 @@ impl BotMemory {
         gems.sort_by_key(|&[x, y]| (x, y)); // Sortiere deterministisch
 
         let mut closest: Option<[i32; 2]> = None;
-
+        
         for gem in gems {
             closest = match closest {
                 None => Some(gem),
