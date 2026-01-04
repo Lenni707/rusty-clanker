@@ -160,14 +160,22 @@ impl BotMemory {
 
         
     }
+
+    fn rm_dead_gems(&self) {
+        for i in &self.known_gems {
+            // if i.ttl {
+
+            // }
+        }
+    }
 }
 
-pub fn get_dist(a: [i32; 2], b: [i32; 2]) -> i32 {
+pub fn _get_dist(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
     let dx = a[0] - b[0];
     let dy = a[1] - b[1];
     dx * dx + dy * dy
 }
-fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
+fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
 }
 
