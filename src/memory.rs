@@ -20,6 +20,7 @@ pub struct BotMemory {
 pub struct GemMemory {
     pub position: [i32; 2],
     pub ttl: i32,
+    last_seen_tick: u32
 }
 #[derive(Debug, Clone, Copy)]
 pub struct PositionMemory {
@@ -51,6 +52,7 @@ impl BotMemory {
                 GemMemory {
                     position: gem.position,
                     ttl: gem.ttl,
+                    last_seen_tick: state.tick
                 },
             );
         }
@@ -110,6 +112,7 @@ impl BotMemory {
                     self.current_target = Some(GemMemory {
                         position: pos,
                         ttl: gem.ttl,
+                        last_seen_tick: state.tick
                     });
                 }
             }
@@ -126,57 +129,69 @@ impl BotMemory {
     pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
         let mut gems: Vec<_> = self.known_gems.keys().copied().collect();
         // Wenn gems leer sind
-        if gems.len() < 1 { return None; }
+        if gems.is_empty() {
+            return None;
+        }
         gems.sort_by_key(|&[x, y]| (x, y)); // Sortiere deterministisch
 
-        let mut closest: Option<[i32; 2]> = None;
+        let mut best: Option<[i32; 2]> = None;
+        let mut best_score: i32 = i32::MIN;
         
-        for gem in gems {
-            closest = match closest {
-                None => Some(gem),
-                Some(current_closest) => {
-                    match get_closer_pos(state.bot, current_closest, gem, self) {
-                        Some(closer) => Some(closer),
-                        None => Some(current_closest)
-                    }
+        for (&gem_pos, gem_mem) in self.known_gems.iter() {
+            let dist = match get_dist(state.bot, gem_pos, self) {
+                Some(d) => d,
+                None => continue, // gem unreachable
+            };
+
+            let age = state.tick - gem_mem.last_seen_tick;
+            let ttl_now = gem_mem.ttl - age as i32;
+            if ttl_now <= 0 { continue }
+
+            // if gem despawns before possible arrival
+            if dist >= ttl_now {
+                continue;
+            }
+
+            // if dist >= gem_mem.ttl {
+            //     continue;
+            // }
+            // let score = gem_mem.ttl - dist;
+
+            let score = ttl_now - (dist * 4);
+
+            if best.is_none() || score > best_score {
+                // better score => take it instead
+                best = Some(gem_pos);
+                best_score = score;
+            } else if score == best_score {
+                // same score => gem who is close to the bot gets picked (bisschen unnötig kompliziert aber ich wolte die func get_closer_pos noch benutzen...)
+                let curr = best.unwrap();
+                if let Some(closer) = get_closer_pos(state.bot, curr, gem_pos, self) {
+                    best = Some(closer);
                 }
             }
         }
 
-        eprintln!(
-            "tick={}\n\
-            bot={:?}\n\
-            target={:?}\n\
-            visible_gems={:?}\n\
-            known_gems_keys={:?}\n",
-            state.tick,
-            state.bot,
-            self.current_target.as_ref().map(|g| g.position),
-            state.visible_gems,
-            self.known_gems.keys().copied().collect::<Vec<_>>()
-        );
-
-        closest
-
-        
+        best
     }
+}
 
-    fn rm_dead_gems(&self) {
-        for i in &self.known_gems {
-            // if i.ttl {
+pub fn get_dist(
+    a: [i32; 2],
+    b: [i32; 2],
+    memory: &BotMemory,
+) -> Option<i32> {
+    let path = astar(a, b, &memory.known_walls, memory.width, memory.height);
 
-            // }
+    let dist = match path {
+        Some(path) => Some(path.len() as i32 - 1),
+        None => {
+            eprintln!("theres no viable path between the points, so dist cant be measured");
+            None
         }
-    }
-}
+    };
 
-pub fn _get_dist(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
-    let dx = a[0] - b[0];
-    let dy = a[1] - b[1];
-    dx * dx + dy * dy
-}
-fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
-    (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
+    dist
 }
 
 pub fn get_closer_pos(
@@ -185,20 +200,28 @@ pub fn get_closer_pos(
     b: [i32; 2],
     memory: &BotMemory,
 ) -> Option<[i32; 2]> {
-        let path_a = astar(a, goal, &memory.known_walls, memory.width , memory.height ); // config.width config.height
-        let path_b = astar(b, goal, &memory.known_walls, memory.width, memory.height);
+    let dist_a = get_dist(a, goal, memory);
+    let dist_b = get_dist(b, goal, memory);
 
-        let shorter = match (path_a, path_b) {
-            (Some(pa), Some(pb)) => {
-                if pa.len() <= pb.len() {
-                    Some(a)
-                } else {
-                    Some(b)
-                }
-            }
-            (Some(_), None) => Some(a),
-            (None, Some(_)) => Some(b),
-            (None, None) => { eprintln!("both positions cant be reached"); None }
-        };
-        shorter
+    match (dist_a, dist_b) {
+        (Some(da), Some(db)) => {
+            if da <= db { Some(a) } else { Some(b) }
+        }
+        (Some(_), None) => Some(a),
+        (None, Some(_)) => Some(b),
+        (None, None) => {
+            eprintln!("both positions cant be reached");
+            None
+        }
+    }
 }
+
+
+// pub fn _get_dist(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
+// //     let dx = a[0] - b[0];
+// //     let dy = a[1] - b[1];
+// //     dx * dx + dy * dy
+// // }
+// // fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
+// //     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
+// // }
