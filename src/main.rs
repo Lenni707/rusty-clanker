@@ -38,11 +38,11 @@ fn main() {
             }
         };
 
-        // Config speichern, wenn sie vorhanden ist: Da sie nur einmal am Anfang geschickt wird
-        if let Some(config) = &state.config {
-            width = config.width;
-            height = config.height;
-            eprintln!("Width: {}, Height: {}", width, height)
+        // TODO: CONFIG STATT IN GAMESTATE, IN BOT MEMORY SCHREIBEN
+        if let Some(cfg) = &state.config {
+            memory.width = cfg.width;
+            memory.height = cfg.height;
+            eprintln!("Width: {}, Height: {}", memory.width, memory.height);
         }
 
         memory.update(&state);
@@ -90,3 +90,6 @@ fn main() {
 // 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb, bh34pf, 1iv223z
 // c1h011  bug, bot ignoriert eine gem, obwohl er ihn anvisiert und geht lieber wieter exploren
 // lywmv2 ich denke es ist ein fehler weil er, wenn er ein schritt vor dem gem war, ein neuen gesehen hat
+
+// FIXME:
+// known_gems werden nicht gelöscht, wenn sie ablaufen => bei jedem gem muss mitgezählt werden, wie lange sie noch leben

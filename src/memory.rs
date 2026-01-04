@@ -5,12 +5,16 @@ use crate::states::GameState;
 use crate::decision::astar;
 
 pub struct BotMemory {
+    pub width: i32,
+    pub height: i32,
+
     pub current_target: Option<GemMemory>,
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
+    
 }
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
@@ -25,6 +29,9 @@ pub struct PositionMemory {
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
+            width: 0,
+            height: 0,
+
             current_target: None,
             known_gems: BTreeMap::new(),
             known_positions: BTreeMap::new(),
@@ -128,7 +135,7 @@ impl BotMemory {
             closest = match closest {
                 None => Some(gem),
                 Some(current_closest) => {
-                    match get_closer_pos(state.bot, current_closest, gem, self, &state) {
+                    match get_closer_pos(state.bot, current_closest, gem, self) {
                         Some(closer) => Some(closer),
                         None => Some(current_closest)
                     }
@@ -136,7 +143,22 @@ impl BotMemory {
             }
         }
 
+        eprintln!(
+            "tick={}\n\
+            bot={:?}\n\
+            target={:?}\n\
+            visible_gems={:?}\n\
+            known_gems_keys={:?}\n",
+            state.tick,
+            state.bot,
+            self.current_target.as_ref().map(|g| g.position),
+            state.visible_gems,
+            self.known_gems.keys().copied().collect::<Vec<_>>()
+        );
+
         closest
+
+        
     }
 }
 
@@ -154,11 +176,9 @@ pub fn get_closer_pos(
     a: [i32; 2],
     b: [i32; 2],
     memory: &BotMemory,
-    state: &GameState,
 ) -> Option<[i32; 2]> {
-    if let Some(config) = &state.config {  
-        let path_a = astar(a, goal, &memory.known_walls, config.width, config.height);
-        let path_b = astar(b, goal, &memory.known_walls, config.width, config.height);
+        let path_a = astar(a, goal, &memory.known_walls, memory.width , memory.height ); // config.width config.height
+        let path_b = astar(b, goal, &memory.known_walls, memory.width, memory.height);
 
         let shorter = match (path_a, path_b) {
             (Some(pa), Some(pb)) => {
@@ -173,5 +193,4 @@ pub fn get_closer_pos(
             (None, None) => { eprintln!("both positions cant be reached"); None }
         };
         shorter
-    } else { return None }
 }
