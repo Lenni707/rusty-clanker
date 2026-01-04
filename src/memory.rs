@@ -134,11 +134,19 @@ impl BotMemory {
         let mut best: Option<[i32; 2]> = None;
         let mut best_dist: i32 = i32::MAX;
 
-        for (&gem_pos, _gem_mem) in self.known_gems.iter() {
+        for (&gem_pos, gem_mem) in self.known_gems.iter() {
             let dist = match get_dist(state.bot, gem_pos, self) {
                 Some(d) => d,
                 None => continue, // unreachable gem
             };
+
+            let age = state.tick - gem_mem.last_seen_tick; 
+            let ttl_now = gem_mem.ttl - age as i32; 
+            if ttl_now <= 0 { continue } // wenn gem despawnt ist
+
+            if ttl_now <= dist { // if gem despawns before possible arrival if dist >= ttl_now { continue; }
+                continue
+            }
 
             if dist < best_dist {
                 best = Some(gem_pos);
