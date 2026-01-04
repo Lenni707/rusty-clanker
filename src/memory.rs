@@ -106,7 +106,7 @@ impl BotMemory {
 
         // Ziel wählen - always pick closest gem
         if !self.known_gems.is_empty() {
-            if let Some(pos) = self.get_closest_gem(state) {
+            if let Some(pos) = self.get_best_gem(state) {
                 if let Some(gem) = self.known_gems.get(&pos) {
                     // eprintln!("{:?}, {}", self.current_target, state.tick);
                     self.current_target = Some(GemMemory {
@@ -126,54 +126,35 @@ impl BotMemory {
         }
     }
 
-    pub fn get_closest_gem(&self, state: &GameState) -> Option<[i32; 2]> {
-        let mut gems: Vec<_> = self.known_gems.keys().copied().collect();
-        // Wenn gems leer sind
-        if gems.is_empty() {
+    pub fn get_best_gem(&self, state: &GameState) -> Option<[i32; 2]> {
+        if self.known_gems.is_empty() {
             return None;
         }
-        gems.sort_by_key(|&[x, y]| (x, y)); // Sortiere deterministisch
 
         let mut best: Option<[i32; 2]> = None;
-        let mut best_score: i32 = i32::MIN;
-        
-        for (&gem_pos, gem_mem) in self.known_gems.iter() {
+        let mut best_dist: i32 = i32::MAX;
+
+        for (&gem_pos, _gem_mem) in self.known_gems.iter() {
             let dist = match get_dist(state.bot, gem_pos, self) {
                 Some(d) => d,
-                None => continue, // gem unreachable
+                None => continue, // unreachable gem
             };
 
-            let age = state.tick - gem_mem.last_seen_tick;
-            let ttl_now = gem_mem.ttl - age as i32;
-            if ttl_now <= 0 { continue }
-
-            // if gem despawns before possible arrival
-            if dist >= ttl_now {
-                continue;
-            }
-
-            // if dist >= gem_mem.ttl {
-            //     continue;
-            // }
-            // let score = gem_mem.ttl - dist;
-
-            let score = ttl_now - (dist * 4);
-
-            if best.is_none() || score > best_score {
-                // better score => take it instead
+            if dist < best_dist {
                 best = Some(gem_pos);
-                best_score = score;
-            } else if score == best_score {
-                // same score => gem who is close to the bot gets picked (bisschen unnötig kompliziert aber ich wolte die func get_closer_pos noch benutzen...)
-                let curr = best.unwrap();
-                if let Some(closer) = get_closer_pos(state.bot, curr, gem_pos, self) {
-                    best = Some(closer);
+                best_dist = dist;
+            } else if dist == best_dist {
+                if let Some(curr) = best {
+                    if let Some(closer) = get_closer_pos(state.bot, curr, gem_pos, self) {
+                        best = Some(closer);
+                    }
                 }
             }
         }
 
         best
     }
+
 }
 
 pub fn get_dist(
