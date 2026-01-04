@@ -215,9 +215,9 @@ fn get_exploration_target(
             None => {
                 // Wenn noch nie gesehen
                 if is_frontier {
-                    (2000, 700) // 500
+                    (1800, 700) // 500
                 } else {
-                    (1000, 600)
+                    (1200, 600)
                 }
             }
             Some(&mem) => {
