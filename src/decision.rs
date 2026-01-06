@@ -4,7 +4,7 @@ use std::{
     i32,
 };
 
-use crate::{memory::BotMemory, states::GameState};
+use crate::{memory::BotMemory, states::{self, GameState}};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -278,6 +278,97 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
     frontiers
 }
 // =====================================================
+// Bot Exploration Abbruch
+// =====================================================
+fn should_abort_exploration(
+    state: &GameState,
+    target: [i32; 2],
+    memory: &BotMemory,
+    vis_range: i32
+) -> bool {
+    if state.tick < 200 { eprintln!("öasdfjas"); return false; }
+    let distance = heuristic(state.bot, target);
+
+    // Wenn die Entfernug größer ist als die vis_range, dann sollte weiter gegangen werden
+    if distance > vis_range * 2 {
+        return false; // FIXME: Hier könnten Fehler auftregen, da die dist nicht die Wände mit einbezieht. Das klingt für mich aber nicht schlimm, da der Felher dann später gefunden wird.
+    }
+    
+    let tiles_at_target = get_visible_tiles_from_pos(
+        target, 
+        &memory.known_walls, 
+        vis_range, 
+        memory.width, 
+        memory.height
+    );
+
+    let tiles_now = get_visible_tiles_from_pos(
+        state.bot, 
+        &memory.known_walls, 
+        vis_range, 
+        memory.width, 
+        memory.height
+    );
+
+    let mut new_counter = 0;
+    for tile in tiles_at_target {
+        let not_yet_visible = tiles_now.contains(&tile);
+        if not_yet_visible {
+            new_counter += 1;
+        }
+    }
+    if new_counter >= 3 { //TODO: Diese 3 hier ändern und testen
+        eprintln!("Aborting Exploration");
+        return true;
+    }
+    
+    false // Sollte nicht abgebrochen werden
+}
+
+fn get_visible_tiles_from_pos(
+    pos: [i32; 2],
+    known_walls: &HashSet<[i32; 2]>,
+    vis_range: i32,
+    width: i32,
+    height: i32
+) -> HashSet<[i32; 2]> {
+    let mut visible = HashSet::new();
+
+    for dx in -vis_range..=vis_range {
+        for dy in -vis_range..=vis_range {
+            let check_pos = [pos[0] + dx, pos[1] + dy];
+
+            if !is_in_bounds(pos, width, height) {
+                continue;
+            }
+
+            // Da die vis_range nicht um ein 4 Eck um den Bot ist
+            if (dx.abs() + dy.abs()) > vis_range {
+                continue;
+            }
+            if has_line_of_sight(pos, check_pos, known_walls, vis_range) {
+                visible.insert(check_pos);
+            }
+        }
+    }
+    visible
+}
+
+fn has_line_of_sight(
+    from: [i32; 2],
+    to: [i32; 2],
+    walls: &HashSet<[i32; 2]>,
+    vis_range: i32
+) -> bool {
+    // TODO: Ein richtiges Line of Sight hier einbauen, erstmal tue ich so, als ob alles in meiner vis - 1 gesehn wird
+    // https://www.redblobgames.com/articles/visibility/ das ist gut
+    let dist = heuristic(from, to);
+    if dist + 1 < vis_range {
+        return true;
+    }
+    false
+}
+// =====================================================
 // Entscheidungsfunktion für den Bot
 // =====================================================
 
@@ -294,13 +385,18 @@ pub fn decide(
         None => {
             // Kein Target Gem-> Exploreation
             match memory.exploration_target {
-                Some(explored_pos) => explored_pos,
+                Some(explored_pos) => {
+                    //if should_abort_exploration(state, explored_pos, memory, 10) {
+                    //    memory.exploration_target = None;
+                    //    // Auf nächsten frame warten, TODO: hier immer das nächste Ziel aussuchen
+                    //    return (Direction::Wait, None);
+                    //}
+                    explored_pos},
                 None => {
                     // Kein Aktuelles Target: Neues Target finden
                     match get_exploration_target(state, memory, width, height) {
                         Some(new_target) => {
                             memory.exploration_target = Some(new_target);
-                            eprintln!("Started exploring, {:?}", state.tick);
                             new_target
                         }
                         None => {
@@ -357,7 +453,6 @@ pub fn decide(
     memory.exploration_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
-    eprintln!("{:?}", memory.known_gems);
     for gem in &state.visible_gems {
         let mut iter_check = false;
         for supposed_gem in &memory.known_gems {
@@ -374,7 +469,7 @@ pub fn decide(
 
 fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
-    
+    // TODO: Das throwt jedes mal mein got
     let config = state.config.as_ref().unwrap();
     let center = [config.width / 2, config.height / 2];
     let current = state.bot;
