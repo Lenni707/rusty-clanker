@@ -4,6 +4,7 @@ use std::io::{self, BufRead, Write};
 mod decision;
 mod memory;
 mod states;
+mod signal;
 
 use decision::decide;
 use states::GameState;
@@ -42,6 +43,7 @@ fn main() {
         if let Some(cfg) = &state.config {
             memory.width = cfg.width;
             memory.height = cfg.height;
+            memory.signal_radius = cfg.signal_radius;
             eprintln!("Width: {}, Height: {}", memory.width, memory.height);
         }
 
