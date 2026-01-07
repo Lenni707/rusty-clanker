@@ -14,6 +14,9 @@ pub struct BotMemory {
     pub known_walls: HashSet<[i32; 2]>,
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
+
+    pub field_signal_strength: BTreeMap<[i32; 2], f32>,
+    pub signal_radius: f32
     
 }
 #[derive(Debug, PartialEq)]
@@ -39,6 +42,9 @@ impl BotMemory {
             known_walls: HashSet::new(),
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
+
+            field_signal_strength: BTreeMap::new(),
+            signal_radius: 0.
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -56,6 +62,10 @@ impl BotMemory {
                 },
             );
         }
+
+        // add signal from this field to BTreeMap of all known tiles with a signal
+        self.field_signal_strength.insert(state.bot, state.signal_strength);
+        
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
