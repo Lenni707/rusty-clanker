@@ -110,7 +110,7 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
     frontiers
 }
 // =====================================================
-// Bot Exploration Abbruch
+// Exploration Abbruch
 // =====================================================
 fn should_abort_exploration(
     state: &GameState,
@@ -195,8 +195,39 @@ fn has_line_of_sight(
     // TODO: Ein richtiges Line of Sight hier einbauen, erstmal tue ich so, als ob alles in meiner vis - 1 gesehn wird
     // https://www.redblobgames.com/articles/visibility/ das ist gut
     let dist = heuristic(from, to);
-    if dist + 1 < vis_range {
+
+    // Wenn außerhalb der render distance wird nicht zu sehen sein
+    if dist > vis_range + 5 {
+        return false;
+    }
+    // Gleiche Position ist immer sichtbar
+    if from == to {
         return true;
     }
-    false
+
+    let dx = from[0] + to[0];
+    let dy = from[1] + to[1];
+
+    // Anzahl der Schritte = Maximalen Koordanatendifferenz
+    let steps = dx.abs().max(dy.abs());
+
+    // Schrittgrößen
+    let x_steps = dx as f32 / steps as f32;
+    let y_steps = dy as f32 / steps as f32;
+
+    // Nummers als floats nehmen, 
+    let mut x = from[0] as f32;
+    let mut y = from[1] as f32;
+
+    for _ in 0..=steps {
+        x += x_steps;
+        y += y_steps;
+
+        let pos = [x.round() as i32, y.round() as i32];
+
+        if walls.contains(&pos) {
+            return false;
+        }
+    }
+    true
 }
