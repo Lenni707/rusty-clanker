@@ -5,6 +5,9 @@ mod decision;
 mod memory;
 mod states;
 mod signal;
+mod explore;
+mod helper_func;
+mod astar;
 
 use decision::decide;
 use states::GameState;
@@ -18,8 +21,8 @@ fn main() {
     let mut stdout = io::stdout();
 
     let mut memory = BotMemory::new();
-    let mut width = 100; // Default einstellungen
-    let mut height = 100;
+    let mut width = memory.width; //100;
+    let mut height = memory.height; //100;
 
     for line in stdin.lock().lines() {
         let line = match line {
