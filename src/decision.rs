@@ -40,7 +40,7 @@ pub fn decide(
     width: i32,
     height: i32,
 ) -> (Direction, Option<Vec<[i32; 2]>>) {
-    let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem?
+    let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         t    
     } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         pos
@@ -92,7 +92,7 @@ pub fn decide(
             return (movement_fallback(&memory, state), None);
         }
     }
-    
+
     memory.exploration_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden

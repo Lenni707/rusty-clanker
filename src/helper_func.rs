@@ -8,6 +8,12 @@ pub fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
 }
 
+pub fn euclidean(a: [i32; 2], b: [i32; 2]) -> f32 {
+    let dx = (a[0] - b[0]) as f32;
+    let dy = (a[1] - b[1]) as f32;
+    (dx * dx + dy * dy).sqrt()
+}
+
 pub fn is_in_bounds(pos: [i32; 2], width: i32, height: i32) -> bool {
     pos[0] >= 0 && pos[0] < width && pos[1] >= 0 && pos[1] < height
 }
