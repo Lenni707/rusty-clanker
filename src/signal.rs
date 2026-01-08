@@ -5,7 +5,7 @@ use crate::states::GameState;
 use crate::memory::BotMemory;
 
 #[derive(Debug, PartialEq)]
-pub struct signal_based_gems{
+pub struct SignalBasedGems{
     pub position: [i32; 2]
 }
 

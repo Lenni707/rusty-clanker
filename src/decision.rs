@@ -40,36 +40,16 @@ pub fn decide(
     width: i32,
     height: i32,
 ) -> (Direction, Option<Vec<[i32; 2]>>) {
-    // Gibt es einen target gem?
-    let target_gem = match memory.get_target() {
-        // müsst eeigenltich target heißen
-        Some(t) => t,
-        None => {
-            // Kein Target Gem-> Exploreation
-            match memory.exploration_target {
-                Some(explored_pos) => {
-                    //if should_abort_exploration(state, explored_pos, memory, 10) {
-                    //    memory.exploration_target = None;
-                    //    // Auf nächsten frame warten, TODO: hier immer das nächste Ziel aussuchen
-                    //    return (Direction::Wait, None);
-                    //}
-                    explored_pos},
-                None => {
-                    // Kein Aktuelles Target: Neues Target finden
-                    match get_exploration_target(state, memory, width, height) {
-                        Some(new_target) => {
-                            memory.exploration_target = Some(new_target);
-                            new_target
-                        }
-                        None => {
-                            eprintln!("Kein Exploration Target gefunden - 404 :/");
-                            return (movement_fallback(&memory, &state), None);
-                            // return Direction::Wait;
-                        }
-                    }
-                }
-            }
-        }
+    let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem?
+        t    
+    } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
+        pos
+    } else if let Some(new_target) = get_exploration_target(state, memory, width, height) { // if no exploration target, pick new target
+        memory.exploration_target = Some(new_target);
+        new_target
+    } else { // if picking new target also failed, revert to movement fallback
+        eprintln!("Kein Exploration Target gefunden - 404 :/");
+        return (movement_fallback(memory, state), None);
     };
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
@@ -87,7 +67,7 @@ pub fn decide(
     // Finde den Weg mit A*
     let path = astar(state.bot, target_gem, &walls, width, height);
 
-    // Wenn wir einen Pfad gefunden haben:
+    // Wenn wir einen Pfad gefunden haben move through path:
     if let Some(path) = path {
         // path enthält: [Start, Schritt1, Schritt2, ..., Ziel]
         if path.len() > 1 {
@@ -112,6 +92,7 @@ pub fn decide(
             return (movement_fallback(&memory, state), None);
         }
     }
+    
     memory.exploration_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
