@@ -15,6 +15,8 @@ use states::GameState;
 
 use crate::memory::BotMemory;
 
+use crate::highlights::Highlighter;
+
 fn main() {
     eprint!("A small step for the bot, but a giant leap for the developers");
 

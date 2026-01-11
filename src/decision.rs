@@ -44,14 +44,14 @@ pub fn decide(
     highlights: &mut Highlighter
 ) -> Direction {
     let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem
-        highlights.add_point(t, color::RED);
+        highlights.add_point(t, colors::RED);
         t    
     } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
-        highlights.add_point(t, color::GREEN);
+        highlights.add_point(pos, colors::GREEN);
         pos
     } else if let Some(new_target) = get_exploration_target(state, memory, width, height) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
-        highlights.add_point(t, color::GREEN);
+        highlights.add_point(new_target, colors::GREEN);
         new_target
     } else { // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
@@ -84,7 +84,7 @@ pub fn decide(
 
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
-                color::RED
+                colors::RED
             } else {
                 colors::GREEN
             };

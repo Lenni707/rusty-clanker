@@ -1,11 +1,14 @@
 // Feld fürs highlighten
 
+use serde_json::{json, Value};
+
+
 pub struct Highlighter {
     highlights: Vec<([i32; 2], String)>
 }
 
 impl Highlighter {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Highlighter {
             highlights: Vec::new(),
         }
@@ -26,12 +29,16 @@ impl Highlighter {
     }
 
     pub fn to_json(&self) -> Value {
-        let highlight_array: Vec<Value> = self.highlights
+        if self.is_empty() {
+            return json!({});
+        }
+
+        let highlights_array: Vec<Value> = self.highlights
             .iter()
-            .map(|(pos, color)| json!([pos[0]. pos[1], color]))
+            .map(|(pos, color)| json!([pos[0], pos[1], color]))
             .collect();
 
-        json!({"highlight": highlight_array})
+        json!({"highlight": highlights_array})
     }
 
     pub fn clear(&mut self) {
