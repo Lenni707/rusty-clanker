@@ -39,8 +39,6 @@ impl Direction {
 pub fn decide(
     state: &GameState,
     memory: &mut BotMemory,
-    width: i32,
-    height: i32,
     highlights: &mut Highlighter
 ) -> Direction {
     let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem
@@ -49,7 +47,7 @@ pub fn decide(
     } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
         pos
-    } else if let Some(new_target) = get_exploration_target(state, memory, width, height) { // if no exploration target, pick new target
+    } else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
         highlights.add_point(new_target, colors::GREEN);
         new_target
@@ -71,7 +69,13 @@ pub fn decide(
     }
 
     // Finde den Weg mit A*
-    let path = astar(state.bot, target_gem, &walls, width, height);
+    let path = astar(
+        state.bot, 
+        target_gem, 
+        &walls, 
+        memory.config.width, 
+        memory.config.height
+    );
 
     // Wenn wir einen Pfad gefunden haben move through path:
     if let Some(path) = path {
@@ -128,8 +132,8 @@ pub fn decide(
 fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
     // TODO: Das throwt jedes mal mein got
-    let width = memory.width;
-    let height = memory.height;
+    let width = memory.config.width;
+    let height = memory.config.height;
     let center = [width / 2, height / 2];
     let current = state.bot;
     

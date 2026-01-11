@@ -23,7 +23,7 @@ pub fn get_dist(
     b: [i32; 2],
     memory: &BotMemory,
 ) -> Option<i32> {
-    let path = astar(a, b, &memory.known_walls, memory.width, memory.height);
+    let path = astar(a, b, &memory.known_walls, memory.config.width, memory.config.height);
 
     let dist = match path {
         Some(path) => Some(path.len() as i32 - 1),

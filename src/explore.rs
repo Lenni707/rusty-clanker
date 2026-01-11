@@ -12,8 +12,6 @@ use std::{
 pub fn get_exploration_target(
     state: &GameState,
     memory: &BotMemory,
-    width: i32,
-    height: i32,
 ) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
@@ -21,7 +19,7 @@ pub fn get_exploration_target(
     let mut candidates = Vec::new();
 
     // Frontiers holen, also Positionen mit vielen Nachbarn
-    let frontiers = get_frontiers(memory, width, height);
+    let frontiers = get_frontiers(memory);
 
     let mut all_positions: Vec<[i32; 2]> = Vec::new();
 
@@ -83,7 +81,7 @@ pub fn get_exploration_target(
     candidates.first().map(|(pos, _)| *pos)
 }
 
-pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2]> {
+pub fn get_frontiers(memory: &BotMemory) -> Vec<[i32; 2]> {
     // Findet Felder mit unbekannten nachbarn
     let mut frontiers = Vec::new();
 
@@ -93,7 +91,7 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
             let neighbor = [known_pos[0] + dx, known_pos[1] + dy];
 
             // Bounds Check
-            if neighbor[0] < 0 || neighbor[0] >= width || neighbor[1] < 0 || neighbor[1] >= height {
+            if neighbor[0] < 0 || neighbor[0] >= memory.config.width || neighbor[1] < 0 || neighbor[1] >= memory.config.height {
                 continue;
             }
 
@@ -131,16 +129,16 @@ fn should_abort_exploration(
         target, 
         &memory.known_walls, 
         vis_range, 
-        memory.width, 
-        memory.height
+        memory.config.width, 
+        memory.config.height
     );
 
     let tiles_now = get_visible_tiles_from_pos(
         state.bot, 
         &memory.known_walls, 
         vis_range, 
-        memory.width, 
-        memory.height
+        memory.config.width, 
+        memory.config.height,
     );
 
     let mut new_counter = 0;

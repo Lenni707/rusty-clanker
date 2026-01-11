@@ -5,8 +5,7 @@ use crate::states::GameState;
 use crate::helper_func::get_dist;
 
 pub struct BotMemory {
-    pub width: i32,
-    pub height: i32,
+    pub config: Config,
 
     pub current_target: Option<GemMemory>,
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
@@ -17,6 +16,15 @@ pub struct BotMemory {
 
     pub field_signal_strength: BTreeMap<[i32; 2], f32>,
     pub signal_radius: f32
+}
+
+pub struct Config {
+    pub width: i32,
+    pub height: i32,
+    pub vis_radius: i32,
+    pub max_ticks: u32,
+    pub gem_ttl: u32,
+    pub signal_radius: f32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,11 +40,23 @@ pub struct PositionMemory {
     pub vis_floor_count: usize,
 }
 
+impl Config {
+    pub fn new() -> Self {
+        Config {
+            width: 0,
+            height: 0,
+            vis_radius: 0,
+            max_ticks: 0,
+            gem_ttl: 0,
+            signal_radius: 0.0,
+        }
+    }
+}
+
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
-            width: 0,
-            height: 0,
+            config: Config::new(),
 
             current_target: None,
             known_gems: BTreeMap::new(),

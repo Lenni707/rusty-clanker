@@ -24,8 +24,6 @@ fn main() {
     let mut stdout = io::stdout();
 
     let mut memory = BotMemory::new();
-    let mut width = memory.width; //100;
-    let mut height = memory.height; //100;
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -47,20 +45,22 @@ fn main() {
 
         // TODO: CONFIG STATT IN GAMESTATE, IN BOT MEMORY SCHREIBEN
         if let Some(cfg) = &state.config {
-            memory.width = cfg.width;
-            memory.height = cfg.height;
-            memory.signal_radius = cfg.signal_radius;
-            eprintln!("Width: {}, Height: {}", memory.width, memory.height);
+            memory.config.width = cfg.width;
+            memory.config.height = cfg.height;
+            memory.config.vis_radius = cfg.vis_radius;
+            memory.config.max_ticks = cfg.max_ticks;
+            memory.config.gem_ttl = cfg.gem_ttl;
+            memory.config.signal_radius = cfg.signal_radius;
+            memory.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst
+            eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
         }
 
         memory.update(&state);
-        let width = memory.width; //100;
-        let height = memory.height; //100;
 
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
         
-        let dir = decide(&state, &mut memory, width, height, &mut highlights);
+        let dir = decide(&state, &mut memory, &mut highlights);
 
         let highlights_json = highlights.to_json();
         println!("{} {}", dir.as_geo(), highlights_json);
