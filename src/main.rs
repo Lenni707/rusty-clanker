@@ -54,6 +54,8 @@ fn main() {
         }
 
         memory.update(&state);
+        let width = memory.width; //100;
+        let height = memory.height; //100;
 
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
