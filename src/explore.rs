@@ -65,7 +65,7 @@ pub fn get_exploration_target(
         };
         let distance = heuristic(state.bot, floor_pos);
 
-        let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 50;
+        let spawn_bonus = memory.gem_spawn_heatmap.get(&floor_pos).unwrap_or(&0) * 25;
         // eprintln!("{spawn_bonus}");
         let score =
             interest_score as i32 + exploration_bonus as i32 + spawn_bonus as i32 - distance;
@@ -109,6 +109,7 @@ pub fn get_frontiers(memory: &BotMemory, width: i32, height: i32) -> Vec<[i32; 2
     frontiers.dedup();
     frontiers
 }
+
 // =====================================================
 // Exploration Abbruch
 // =====================================================

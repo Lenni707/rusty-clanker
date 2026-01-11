@@ -9,6 +9,8 @@ use crate::explore::*;
 use crate::astar::astar;
 use crate::helper_func::*;
 
+use crate::highlights::{Highlighter, colors};
+
 #[derive(Clone, Copy)]
 pub enum Direction {
     Right,
@@ -39,17 +41,21 @@ pub fn decide(
     memory: &mut BotMemory,
     width: i32,
     height: i32,
-) -> (Direction, Option<Vec<[i32; 2]>>) {
+    highlights: &mut Highlighter
+) -> Direction {
     let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem
+        highlights.add_point(t, color::RED);
         t    
     } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
+        highlights.add_point(t, color::GREEN);
         pos
     } else if let Some(new_target) = get_exploration_target(state, memory, width, height) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
+        highlights.add_point(t, color::GREEN);
         new_target
     } else { // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
-        return (movement_fallback(memory, state), None);
+        return movement_fallback(memory, state);
     };
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
@@ -76,20 +82,29 @@ pub fn decide(
             let dx = next_step[0] - state.bot[0];
             let dy = next_step[1] - state.bot[1];
 
+            // Pfad highlighten
+            let path_color = if memory.get_target().is_some() {
+                color::RED
+            } else {
+                colors::GREEN
+            };
+            highlights.add_path(path, path_color);
+            
+
             return match (dx, dy) {
-                (1, 0) => (Direction::Right, Some(path)), // X+1 = rechts
-                (-1, 0) => (Direction::Left, Some(path)), // X-1 = links
-                (0, 1) => (Direction::Down, Some(path)),  // Y+1 = unten
-                (0, -1) => (Direction::Up, Some(path)),   // Y-1 = oben
+                (1, 0) => Direction::Right, // X+1 = rechts
+                (-1, 0) => Direction::Left, // X-1 = links
+                (0, 1) => Direction::Down, // Y+1 = unten
+                (0, -1) => Direction::Up, // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
-                    return (movement_fallback(&memory, state), None);
+                    return movement_fallback(&memory, state);
                 }
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
             // Ziel wurde erreicht
-            return (movement_fallback(&memory, state), None);
+            return movement_fallback(&memory, state);
         }
     }
 
@@ -107,7 +122,7 @@ pub fn decide(
             eprintln!("DISCRAPENCY: {:?}", gem.position)
         }
     }
-    (Direction::Wait, None)
+    Direction::Wait
 }
 
 fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {

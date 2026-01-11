@@ -23,3 +23,7 @@ fn calc_signal_at_pos(radius: f32, pos_1: [i32; 2], pos_2: [i32; 2]) -> f32 {
 fn get_gem_based_on_signal(){
     
 }
+
+fn chase_signal(){
+    
+}

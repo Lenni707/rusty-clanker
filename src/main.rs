@@ -8,6 +8,7 @@ mod signal;
 mod explore;
 mod helper_func;
 mod astar;
+mod highlights;
 
 use decision::decide;
 use states::GameState;
@@ -52,49 +53,18 @@ fn main() {
 
         memory.update(&state);
 
-        let (dir, path) = decide(&state, &mut memory, width, height);
-
         // Debugging: Path highlighten
-        let mut highlights = Vec::new();
+        let mut highlights = Highlighter::new();
+        
+        let dir = decide(&state, &mut memory, width, height, &mut highlights);
 
-        let mut path_color = "#ff0000";
-        if let Some(explore_pos) = memory.exploration_target {
-            path_color = "#00ff00";
-            highlights.push(json!([explore_pos[0], explore_pos[1], "#00ff00"])); // Nur das Array!
-        }
-        // Gem Target
-        if let Some(gem_target) = &memory.current_target {
-            highlights.push(json!([
-                gem_target.position[0],
-                gem_target.position[1],
-                "#ff0000"
-            ]));
-        } // Path
-        if let Some(path) = path {
-            for pos in path.iter().skip(1) {
-                // skip(1) um Startposition zu überspringen
-                highlights.push(json!([pos[0], pos[1], path_color]));
-            }
-        }
-        let highlights_json = if !highlights.is_empty() {
-            json!({"highlight": highlights})
-        } else {
-            json!({})
-        };
-        if !highlights.is_empty() {}
+        let highlights_json = highlights.to_json();
         println!("{} {}", dir.as_geo(), highlights_json);
         stdout.flush().unwrap();
     }
 }
 
 // BEKANNTE BUGS:
-// Beim Exploren in keinen Bereichen ist der Bot stuck: Vielleicht die letzen Schritte zurück gehen? Randam laufen?
-// Feature Idee: Beim Exploren nicht vis_radius betrachen, sondern alles, aber entferntere Felder intressanter machen nach Kriterien wie bspw. ob dort eine Wall ist?
-// Dieses Feature glaube ich ist redundant und vielleicht gar nicht sooo lokrativ, da neuen Felder so weniger oft gefunden werden
 // PROBLEMATISCHE SEEDS:
-// 10t0bcc, 5uy32j, hu31cj, 18udp4u, 1vhh6kb, bh34pf, 1iv223z
-// c1h011  bug, bot ignoriert eine gem, obwohl er ihn anvisiert und geht lieber wieter exploren
-// lywmv2 ich denke es ist ein fehler weil er, wenn er ein schritt vor dem gem war, ein neuen gesehen hat
 
 // FIXME:
-// known_gems werden nicht gelöscht, wenn sie ablaufen => bei jedem gem muss mitgezählt werden, wie lange sie noch leben
