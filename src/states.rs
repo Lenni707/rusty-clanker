@@ -9,7 +9,7 @@ pub struct GameState {
     pub floor: Vec<[i32; 2]>,
     pub visible_gems: Vec<Gem>,
     pub visible_bots: Option<Vec<EnemyBot>>,
-    pub signal_strength: f32
+    pub signal_level: f32
 }
 
 #[derive(Debug, Deserialize)]

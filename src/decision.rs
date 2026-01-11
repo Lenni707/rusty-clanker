@@ -128,8 +128,9 @@ pub fn decide(
 fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
     // TODO: Das throwt jedes mal mein got
-    let config = state.config.as_ref().unwrap();
-    let center = [config.width / 2, config.height / 2];
+    let width = memory.width;
+    let height = memory.height;
+    let center = [width / 2, height / 2];
     let current = state.bot;
     
     // Richtung zur Mitte
@@ -161,7 +162,7 @@ fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
             Direction::Wait => current,
         };
         
-        if is_in_bounds(next_pos, config.width, config.height) 
+        if is_in_bounds(next_pos, width, height) 
            && !memory.known_walls.contains(&next_pos) {
             return dir;
         }
