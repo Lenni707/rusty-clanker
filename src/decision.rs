@@ -47,7 +47,7 @@ pub fn decide(
         memory.signal_target = None;
         t
     }  
-    else if state.signal_level > 0.0 {
+    else if state.signal_level >= 0.1 {
         move_to_signal(memory, state)
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target

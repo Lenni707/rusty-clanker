@@ -44,7 +44,7 @@ fn probe_step(memory: &BotMemory, current: Pos) -> Option<Pos> {
 
 /// move towards stronger signal, if not improving => probe_step / move back (included in probe step)
 pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
-    if let Some(target) = memory.signal_target {
+    if let Some(target) = memory.signal_target.take() {
         return target;
     }
 
@@ -68,8 +68,9 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
             if is_free(memory, forward) {
                 forward
             } else {
-                memory.signal_target = Some(fallback_with_astar(d, state, memory));
-                fallback_with_astar(d, state, memory)
+                let step = fallback_with_astar(d, state, memory);
+                memory.signal_target = Some(step);
+                step
             }
         } else {
             // erster move => irgendwo hin TODO: mit Timon abklären das er erst ein Signal anfängt zu chasen, wenn das signal_level ein bestimmtes level erreicht hat
@@ -101,8 +102,8 @@ pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> P
     let dist = calc_dist_with_signal(state.signal_level, memory.config.signal_radius);
 
     // float dist to resonaböe lookahead
-    let lookahead = (dist * 1.0).round() as i32; // auch es ein bisschen chillen lassen
-          // nicht zu weite pfade, da ja alle signals addiert werden
+    let mut lookahead = (dist * 0.8).round() as i32; // 0.8 = aim a bit before the peak
+    lookahead = lookahead.clamp(6, 20);          // clamp range (tune if you want)
 
     // das ungefähre goal
     let mut goal: Pos = [
@@ -113,3 +114,55 @@ pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> P
 
     goal
 }
+
+// TODO:
+// 3) When the signal goes down, your probing is too weak in mazes
+
+// Your probe order is [left, right, back]. That’s okay, but in a maze you can get stuck “sliding” and not escaping.
+
+// Make it maze-smart:
+
+// track stuck_ticks (how many ticks since signal improved)
+
+// if stuck_ticks gets large, stop local probing and do a bigger detour (A*).
+
+// 4) “Distance from signal” needs clamping (or you’ll aim insanely far)
+
+// If signal is small, dist = r * sqrt(1/s - 1) becomes huge, and your virtual goal will be far away (often the edge of the map). In wall-heavy maps, this creates long, pointless detours.
+
+// Fix: turn it into a lookahead that’s clamped, like:
+
+// minimum 6 tiles
+
+// maximum 20 tiles
+
+// 5) Use A* only when it matters
+
+// On wall-heavy maps, you’ll want to A* more often, but not every tick.
+
+// Simple rule:
+
+// If forward is blocked → A* detour
+
+// If stuck_ticks >= 3 → A* detour
+
+// Otherwise → cheap gradient+probe
+
+// That keeps it fast but not wasteful.
+
+// 6) Avoid ping-pong / loops
+
+// In mazes, a pure “left/right/back” policy can oscillate.
+
+// Fix: keep a tiny “recent positions” list (like last 10 tiles) and avoid stepping into them unless forced. This makes the crab stop pacing in front of a wall.
+
+// What “better in many walls” looks like behavior-wise
+
+// When uphill and open: crab runs straight.
+
+// When uphill but wall blocks: crab immediately A*s around it toward a point ahead.
+
+// When downhill: crab probes left/right, but if it keeps failing: crab A*s to escape the trap.
+
+// Crab avoids bouncing back and forth.
+
