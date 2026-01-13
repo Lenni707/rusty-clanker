@@ -61,19 +61,18 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
     // bisschen deppert aber die Richtung, in die gegangen wurde (mir ist nichts besseres eingefallen)
     let dir: Option<Pos> = memory.last_pos.map(|prev| sub(current, prev));
 
-    let next = if going_up {
-        // wenn signal größer wird, eiter in gleiche richtung
+    let next = if going_up { // wenn signal größer wird, eiter in gleiche richtung
         if let Some(d) = dir {
             let forward = add(current, d);
-            if is_free(memory, forward) {
+            if is_free(memory, forward) { // if tile is free (!wall, !edge) "move" forward
                 forward
-            } else {
+            } else { // if tile == wall or tile == edge
                 let step = fallback_with_astar(d, state, memory);
                 memory.signal_target = Some(step);
                 step
             }
         } else {
-            // erster move => irgendwo hin TODO: mit Timon abklären das er erst ein Signal anfängt zu chasen, wenn das signal_level ein bestimmtes level erreicht hat
+            // erster move => irgendwo hin
             pick_any_free_neighbour(memory, current)
         }
     } else {
@@ -98,7 +97,9 @@ fn calc_dist_with_signal(signal: f32, radius: f32) -> f32 {
     distance
 }
 
-pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> Pos {
+pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> Pos { 
+// TODO: // dir is only straight lines
+// i doesnt take into account, if the gem is diagonial from me, so im not always taking the most optimized path
     let dist = calc_dist_with_signal(state.signal_level, memory.config.signal_radius);
 
     // float dist to resonaböe lookahead
@@ -116,53 +117,7 @@ pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> P
 }
 
 // TODO:
-// 3) When the signal goes down, your probing is too weak in mazes
+// add stuck ticks counter (ticks since signal hasnt improved by alot)
+// add recent tiles map so the bots tries to not go into a infinty loop
 
-// Your probe order is [left, right, back]. That’s okay, but in a maze you can get stuck “sliding” and not escaping.
-
-// Make it maze-smart:
-
-// track stuck_ticks (how many ticks since signal improved)
-
-// if stuck_ticks gets large, stop local probing and do a bigger detour (A*).
-
-// 4) “Distance from signal” needs clamping (or you’ll aim insanely far)
-
-// If signal is small, dist = r * sqrt(1/s - 1) becomes huge, and your virtual goal will be far away (often the edge of the map). In wall-heavy maps, this creates long, pointless detours.
-
-// Fix: turn it into a lookahead that’s clamped, like:
-
-// minimum 6 tiles
-
-// maximum 20 tiles
-
-// 5) Use A* only when it matters
-
-// On wall-heavy maps, you’ll want to A* more often, but not every tick.
-
-// Simple rule:
-
-// If forward is blocked → A* detour
-
-// If stuck_ticks >= 3 → A* detour
-
-// Otherwise → cheap gradient+probe
-
-// That keeps it fast but not wasteful.
-
-// 6) Avoid ping-pong / loops
-
-// In mazes, a pure “left/right/back” policy can oscillate.
-
-// Fix: keep a tiny “recent positions” list (like last 10 tiles) and avoid stepping into them unless forced. This makes the crab stop pacing in front of a wall.
-
-// What “better in many walls” looks like behavior-wise
-
-// When uphill and open: crab runs straight.
-
-// When uphill but wall blocks: crab immediately A*s around it toward a point ahead.
-
-// When downhill: crab probes left/right, but if it keeps failing: crab A*s to escape the trap.
-
-// Crab avoids bouncing back and forth.
 
