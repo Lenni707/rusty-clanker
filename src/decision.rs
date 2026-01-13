@@ -3,6 +3,7 @@ use std::{
     i32,
 };
 
+use crate::signal::move_to_signal;
 use crate::{memory::BotMemory, states::GameState};
 use crate::explore::*;
 
@@ -41,17 +42,24 @@ pub fn decide(
     memory: &mut BotMemory,
     highlights: &mut Highlighter
 ) -> Direction {
-    let target_gem = if let Some(t) = memory.get_target() { // Gibt es einen target gem
+    let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
-        t    
-    } else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
+        memory.signal_target = None;
+        t
+    }  
+    else if state.signal_level > 0.0 {
+        move_to_signal(memory, state)
+    }
+    else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
         pos
-    } else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
+    } 
+    else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
         highlights.add_point(new_target, colors::GREEN);
         new_target
-    } else { // if picking new target also failed, revert to movement fallback
+    } 
+    else { // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
         return movement_fallback(memory, state);
     };
@@ -71,7 +79,7 @@ pub fn decide(
     // Finde den Weg mit A*
     let path = astar(
         state.bot, 
-        target_gem, 
+        target, 
         &walls, 
         memory.config.width, 
         memory.config.height

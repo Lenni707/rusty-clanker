@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use crate::states::GameState;
 
-use crate::helper_func::get_dist;
+use crate::helper_func::{get_dist, Pos};
 
 pub struct BotMemory {
     pub config: Config,
@@ -14,8 +14,10 @@ pub struct BotMemory {
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
 
-    pub field_signal_strength: BTreeMap<[i32; 2], f32>,
-    pub signal_radius: f32
+    pub signal_target: Option<Pos>,
+    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
+    pub last_pos: Option<Pos>,
+    pub last_signal: Option<f32>
 }
 
 pub struct Config {
@@ -65,8 +67,10 @@ impl BotMemory {
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
 
-            field_signal_strength: BTreeMap::new(),
-            signal_radius: 0.
+            signal_target: None,
+            gem_signal_map: BTreeMap::new(),
+            last_pos: None,
+            last_signal: None
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -86,7 +90,7 @@ impl BotMemory {
         }
 
         // add signal from this field to BTreeMap of all known tiles with a signal
-        self.field_signal_strength.insert(state.bot, state.signal_level);
+        self.gem_signal_map.insert(state.bot, state.signal_level);
         
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.

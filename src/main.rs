@@ -51,7 +51,7 @@ fn main() {
             memory.config.max_ticks = cfg.max_ticks;
             memory.config.gem_ttl = cfg.gem_ttl;
             memory.config.signal_radius = cfg.signal_radius;
-            memory.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst
+            // memory.config.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst // ne danke abi brauch ich nicht
             eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
         }
 
@@ -61,6 +61,9 @@ fn main() {
         let mut highlights = Highlighter::new();
         
         let dir = decide(&state, &mut memory, &mut highlights);
+
+        memory.last_pos = Some(state.bot); // get last pos
+        memory.last_signal = Some(state.signal_level); // get last signal
 
         let highlights_json = highlights.to_json();
         println!("{} {}", dir.as_geo(), highlights_json);
