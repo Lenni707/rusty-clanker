@@ -28,27 +28,37 @@ fn probe_step(memory: &BotMemory, current: Pos) -> Option<Pos> {
     let prev = memory.last_pos?;
     let dir = sub(current, prev);
 
-    let candidates = [left(dir), right(dir), back(dir)]; 
+    let candidates = [left(dir), right(dir), back(dir)];
 
-    // lieber nicht einfach auf vorheriges feld gehen sonder erstmal recht links test
+    // alle recent tiles erstmal principiel nicht erlauben
     for step in candidates {
         let n = add(current, step);
         if !is_free(memory, n) { continue; }
-        if n == prev { continue; }
+        if is_recent(memory, n) { continue; }
         return Some(n);
     }
 
-    // wenn nur zurück geht => zurück gehen
-    if is_free(memory, prev) { Some(prev) } else { None }
+    // recent tiles erlauben, wenn keine andere möglichkeit
+    for step in candidates {
+        let n = add(current, step);
+        if !is_free(memory, n) { continue; }
+        return Some(n);
+    }
+
+    None
 }
 
 /// move towards stronger signal, if not improving => probe_step / move back (included in probe step)
 pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
-    if let Some(target) = memory.signal_target.take() {
+    if let Some(target) = memory.signal_target {
+    if state.bot == target {
+        memory.signal_target = None;
+    } else {
         return target;
     }
-
+}
     let current = state.bot;
+    remember_pos(memory, current);
     let current_signal = state.signal_level;
 
     let delta_signal = match memory.last_signal {
@@ -67,7 +77,7 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
             if is_free(memory, forward) { // if tile is free (!wall, !edge) "move" forward
                 forward
             } else { // if tile == wall or tile == edge
-                let step = fallback_with_astar(d, state, memory);
+                let step = fallback(d, state, memory);
                 memory.signal_target = Some(step);
                 step
             }
@@ -84,6 +94,13 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
 }
 
 fn pick_any_free_neighbour(memory: &BotMemory, current: Pos) -> Pos {
+    // prefer not-recent
+    for n in get_neighbours(current) {
+        if is_free(memory, n) && !is_recent(memory, n) {
+            return n;
+        }
+    }
+    // fallback: allow recent
     for n in get_neighbours(current) {
         if is_free(memory, n) {
             return n;
@@ -97,14 +114,14 @@ fn calc_dist_with_signal(signal: f32, radius: f32) -> f32 {
     distance
 }
 
-pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> Pos { 
+pub fn fallback(dir: Pos, state: &GameState, memory: &BotMemory) -> Pos { 
 // TODO: // dir is only straight lines
 // i doesnt take into account, if the gem is diagonial from me, so im not always taking the most optimized path
     let dist = calc_dist_with_signal(state.signal_level, memory.config.signal_radius);
 
     // float dist to resonaböe lookahead
     let mut lookahead = (dist * 0.8).round() as i32; // 0.8 = aim a bit before the peak
-    lookahead = lookahead.clamp(6, 20);          // clamp range (tune if you want)
+    lookahead = lookahead.clamp(6, 25);          // clamp range (tune if you want)
 
     // das ungefähre goal
     let mut goal: Pos = [
@@ -118,6 +135,23 @@ pub fn fallback_with_astar(dir: Pos, state: &GameState, memory: &BotMemory) -> P
 
 // TODO:
 // add stuck ticks counter (ticks since signal hasnt improved by alot)
-// add recent tiles map so the bots tries to not go into a infinty loop
+// proben schlaue machen (auf wände achten), smarte auf die gems laufen
 
 
+
+fn remember_pos(memory: &mut BotMemory, p: Pos) {
+    // avoid duplicates if you stay in place
+    if memory.recent_positions.back().copied() == Some(p) {
+        return;
+    }
+
+    memory.recent_positions.push_back(p);
+
+    while memory.recent_positions.len() > 10 {
+        memory.recent_positions.pop_front();
+    }
+}
+
+fn is_recent(memory: &BotMemory, p: Pos) -> bool {
+    memory.recent_positions.iter().any(|&x| x == p)
+}

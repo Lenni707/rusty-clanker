@@ -1,3 +1,4 @@
+use std::mem;
 use std::{
     collections::HashSet,
     i32,
@@ -47,7 +48,7 @@ pub fn decide(
         memory.signal_target = None;
         t
     }  
-    else if state.signal_level >= 0.1 {
+    else if state.signal_level >= 0.05 {
         move_to_signal(memory, state)
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
@@ -121,6 +122,7 @@ pub fn decide(
     }
 
     memory.exploration_target = None;
+    memory.signal_target = None; 
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {

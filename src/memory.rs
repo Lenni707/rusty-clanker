@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
-
+use std::collections::VecDeque; // iwie effiezient oder so ka
 use crate::states::GameState;
 
 use crate::helper_func::{get_dist, Pos};
@@ -17,7 +17,8 @@ pub struct BotMemory {
     pub signal_target: Option<Pos>,
     pub gem_signal_map: BTreeMap<[i32; 2], f32>,
     pub last_pos: Option<Pos>,
-    pub last_signal: Option<f32>
+    pub last_signal: Option<f32>,
+    pub recent_positions: VecDeque<Pos>,
 }
 
 pub struct Config {
@@ -70,7 +71,8 @@ impl BotMemory {
             signal_target: None,
             gem_signal_map: BTreeMap::new(),
             last_pos: None,
-            last_signal: None
+            last_signal: None,
+            recent_positions: VecDeque::new()
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
