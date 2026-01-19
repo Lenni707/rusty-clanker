@@ -53,6 +53,10 @@ pub fn decide(
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
+        // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {
+        //     memory.exploration_target = None;
+        //     return Direction::Wait; // TODO: Hier noch einbauen, das direkt das nächste Ziel verwendet wird
+        // }
         pos
     } 
     else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target

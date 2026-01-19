@@ -16,6 +16,8 @@ pub fn get_exploration_target(
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
     let curr_floor_count = state.floor.len();
+    let cooldown_duration = 100; // Wenn abortet wurde, wie lange darf das Feld nicht besucht werden?
+
     let mut candidates = Vec::new();
 
     // Frontiers holen, also Positionen mit vielen Nachbarn
@@ -37,6 +39,11 @@ pub fn get_exploration_target(
     all_positions.dedup();
 
     for &floor_pos in &all_positions {
+        if let Some(aborted_tick) = memory.aborted_pos.get(&floor_pos) {
+            if curr_tick - aborted_tick < cooldown_duration {
+                continue;
+            }
+        }
         let seen = memory.known_positions.get(&floor_pos);
 
         let is_frontier = frontiers.contains(&floor_pos);
@@ -111,13 +118,15 @@ pub fn get_frontiers(memory: &BotMemory) -> Vec<[i32; 2]> {
 // =====================================================
 // Exploration Abbruch
 // =====================================================
-fn should_abort_exploration(
+pub fn should_abort_exploration(
     state: &GameState,
     target: [i32; 2],
     memory: &BotMemory,
     vis_range: i32
 ) -> bool {
-    if state.tick < 200 { eprintln!("öasdfjas"); return false; }
+    // if state.tick < 200 { 
+    //     return false;
+    // }
     let distance = heuristic(state.bot, target);
 
     // Wenn die Entfernug größer ist als die vis_range, dann sollte weiter gegangen werden
@@ -150,13 +159,14 @@ fn should_abort_exploration(
     }
     if new_counter >= 3 { //TODO: Diese 3 hier ändern und testen
         eprintln!("Aborting Exploration");
+        // FIXME: memory.aborted_pos.insert(target, state.tick);
         return true;
     }
     
     false // Sollte nicht abgebrochen werden
 }
 
-fn get_visible_tiles_from_pos(
+pub fn get_visible_tiles_from_pos(
     pos: [i32; 2],
     known_walls: &HashSet<[i32; 2]>,
     vis_range: i32,
@@ -185,7 +195,7 @@ fn get_visible_tiles_from_pos(
     visible
 }
 
-fn has_line_of_sight(
+pub fn has_line_of_sight(
     from: [i32; 2],
     to: [i32; 2],
     walls: &HashSet<[i32; 2]>,
