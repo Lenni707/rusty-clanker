@@ -39,11 +39,11 @@ pub fn get_exploration_target(
     all_positions.dedup();
 
     for &floor_pos in &all_positions {
-        if let Some(aborted_tick) = memory.aborted_pos.get(&floor_pos) {
-            if curr_tick - aborted_tick < cooldown_duration {
-                continue;
-            }
-        }
+        // if let Some(aborted_tick) = memory.aborted_pos.get(&floor_pos) {
+        //     if curr_tick - aborted_tick < cooldown_duration {
+        //         continue;
+        //     }
+        // }
         let seen = memory.known_positions.get(&floor_pos);
 
         let is_frontier = frontiers.contains(&floor_pos);
