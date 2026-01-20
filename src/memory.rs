@@ -19,6 +19,7 @@ pub struct BotMemory {
     pub last_pos: Option<Pos>,
     pub last_signal: Option<f32>,
     pub recent_positions: VecDeque<Pos>,
+    pub ticks_since_signal_up: i32
 }
 
 pub struct Config {
@@ -72,7 +73,8 @@ impl BotMemory {
             gem_signal_map: BTreeMap::new(),
             last_pos: None,
             last_signal: None,
-            recent_positions: VecDeque::new()
+            recent_positions: VecDeque::new(),
+            ticks_since_signal_up: 0
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide

@@ -71,15 +71,25 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
     // bisschen deppert aber die Richtung, in die gegangen wurde (mir ist nichts besseres eingefallen)
     let dir: Option<Pos> = memory.last_pos.map(|prev| sub(current, prev));
 
+    if memory.ticks_since_signal_up >= 5 { // added so if the signal didnt improve
+        if let Some(d) = dir {
+            let step = fallback(d, state, memory); // fallback
+                memory.signal_target = Some(step);
+                return step
+        }
+        memory.ticks_since_signal_up = 0;
+    }
+
     let next = if going_up { // wenn signal größer wird, eiter in gleiche richtung
         if let Some(d) = dir {
             let forward = add(current, d);
             if is_free(memory, forward) { // if tile is free (!wall, !edge) "move" forward
                 forward
             } else { // if tile == wall or tile == edge
-                let step = fallback(d, state, memory);
-                memory.signal_target = Some(step);
-                step
+                probe_step(memory, current).unwrap_or_else(|| pick_any_free_neighbour(memory, current))
+                // let step = fallback(d, state, memory); // fallback
+                // memory.signal_target = Some(step);
+                // step
             }
         } else {
             // erster move => irgendwo hin
@@ -87,6 +97,7 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
         }
     } else {
         // signal wird nicht größer => anfangen zu proben
+        memory.ticks_since_signal_up += 1;
         probe_step(memory, current).unwrap_or_else(|| pick_any_free_neighbour(memory, current))
     };
 
@@ -147,7 +158,7 @@ fn remember_pos(memory: &mut BotMemory, p: Pos) {
 
     memory.recent_positions.push_back(p);
 
-    while memory.recent_positions.len() > 10 {
+    while memory.recent_positions.len() > 5 {
         memory.recent_positions.pop_front();
     }
 }
