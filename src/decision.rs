@@ -45,7 +45,8 @@ pub fn decide(
 ) -> Direction {
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
-        memory.signal_target = None;
+        memory.signal.signal_target = None;
+        memory.signal.ticks_since_signal_up = 0;
         t
     }
     else if state.signal_level != 0.0 {
@@ -120,13 +121,14 @@ pub fn decide(
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
+            memory.signal.signal_target = None; 
             // Ziel wurde erreicht
             return movement_fallback(&memory, state);
         }
     }
 
     memory.exploration_target = None;
-    memory.signal_target = None; 
+    memory.signal.signal_target = None; 
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {

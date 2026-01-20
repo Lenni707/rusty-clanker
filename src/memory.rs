@@ -14,12 +14,10 @@ pub struct BotMemory {
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
 
-    pub signal_target: Option<Pos>,
-    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
     pub last_pos: Option<Pos>,
-    pub last_signal: Option<f32>,
     pub recent_positions: VecDeque<Pos>,
-    pub ticks_since_signal_up: i32
+
+    pub signal: SignalStats,
 }
 
 pub struct Config {
@@ -29,6 +27,14 @@ pub struct Config {
     pub max_ticks: u32,
     pub gem_ttl: u32,
     pub signal_radius: f32,
+}
+
+pub struct SignalStats {
+    pub signal_target: Option<Pos>,
+    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
+    pub last_signal: Option<f32>,
+    pub ticks_since_signal_up: i32,
+    pub best_signal: f32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -57,6 +63,18 @@ impl Config {
     }
 }
 
+impl SignalStats {
+    fn new() -> Self {
+        SignalStats {
+            signal_target: None,
+            gem_signal_map: BTreeMap::new(),
+            last_signal: None,
+            ticks_since_signal_up: 0,
+            best_signal: 0.0,
+        }
+    }
+}
+
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
@@ -69,12 +87,10 @@ impl BotMemory {
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
 
-            signal_target: None,
-            gem_signal_map: BTreeMap::new(),
             last_pos: None,
-            last_signal: None,
             recent_positions: VecDeque::new(),
-            ticks_since_signal_up: 0
+
+            signal: SignalStats::new()
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -94,7 +110,7 @@ impl BotMemory {
         }
 
         // add signal from this field to BTreeMap of all known tiles with a signal
-        self.gem_signal_map.insert(state.bot, state.signal_level);
+        self.signal.gem_signal_map.insert(state.bot, state.signal_level);
         
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.

@@ -24,7 +24,7 @@ fn right(dir: Pos) -> Pos { left(left(left(dir))) }
 fn back(dir: Pos) -> Pos { [-dir[0], -dir[1]] }
 
 /// felder um einen rum proben
-fn probe_step(memory: &BotMemory, current: Pos) -> Option<Pos> {
+fn probe_step(memory: &BotMemory, current: Pos,) -> Option<Pos> {
     let prev = memory.last_pos?;
     let dir = sub(current, prev);
 
@@ -50,34 +50,42 @@ fn probe_step(memory: &BotMemory, current: Pos) -> Option<Pos> {
 
 /// move towards stronger signal, if not improving => probe_step / move back (included in probe step)
 pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
-    if let Some(target) = memory.signal_target {
-    if state.bot == target {
-        memory.signal_target = None;
-    } else {
-        return target;
+    if let Some(target) = memory.signal.signal_target {
+        if state.bot == target {
+            memory.signal.signal_target = None;
+        } else {
+            return target;
+        }
     }
-}
     let current = state.bot;
     remember_pos(memory, current);
     let current_signal = state.signal_level;
 
-    let delta_signal = match memory.last_signal {
+    let delta_signal = match memory.signal.last_signal {
         Some(prev_signal) => current_signal - prev_signal,
         None => 0.0,
     };
+
+    if delta_signal > memory.signal.best_signal {
+        memory.signal.best_signal = delta_signal
+    }
+    else {
+        memory.signal.ticks_since_signal_up += 1
+    }
 
     let going_up = delta_signal > 0.0;
 
     // bisschen deppert aber die Richtung, in die gegangen wurde (mir ist nichts besseres eingefallen)
     let dir: Option<Pos> = memory.last_pos.map(|prev| sub(current, prev));
 
-    if memory.ticks_since_signal_up >= 5 { // added so if the signal didnt improve
+    if memory.signal.ticks_since_signal_up >= 7 { // added so if the signal didnt improve
         if let Some(d) = dir {
             let step = fallback(d, state, memory); // fallback
-                memory.signal_target = Some(step);
+                eprint!("{} fallback triggered", memory.signal.ticks_since_signal_up);
+                memory.signal.signal_target = Some(step);
+                memory.signal.ticks_since_signal_up = 0;
                 return step
         }
-        memory.ticks_since_signal_up = 0;
     }
 
     let next = if going_up { // wenn signal größer wird, eiter in gleiche richtung
@@ -97,7 +105,6 @@ pub fn move_to_signal(memory: &mut BotMemory, state: &GameState) -> Pos {
         }
     } else {
         // signal wird nicht größer => anfangen zu proben
-        memory.ticks_since_signal_up += 1;
         probe_step(memory, current).unwrap_or_else(|| pick_any_free_neighbour(memory, current))
     };
 
@@ -145,10 +152,7 @@ pub fn fallback(dir: Pos, state: &GameState, memory: &BotMemory) -> Pos {
 }
 
 // TODO:
-// add stuck ticks counter (ticks since signal hasnt improved by alot)
 // proben schlaue machen (auf wände achten), smarte auf die gems laufen
-
-
 
 fn remember_pos(memory: &mut BotMemory, p: Pos) {
     // avoid duplicates if you stay in place
@@ -158,7 +162,7 @@ fn remember_pos(memory: &mut BotMemory, p: Pos) {
 
     memory.recent_positions.push_back(p);
 
-    while memory.recent_positions.len() > 5 {
+    while memory.recent_positions.len() > 10 {
         memory.recent_positions.pop_front();
     }
 }
