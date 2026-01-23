@@ -11,6 +11,7 @@ pub struct BotMemory {
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
+    pub known_floors: HashSet<[i32; 2]>, // Das ist nur fürs einfacheren arbeiten, anstatt mit known_positions
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
 
@@ -84,6 +85,7 @@ impl BotMemory {
             known_gems: BTreeMap::new(),
             known_positions: BTreeMap::new(),
             known_walls: HashSet::new(),
+            known_floors: HashSet::new(),
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
 
@@ -122,6 +124,7 @@ impl BotMemory {
                     vis_floor_count: state.floor.len(),
                 },
             );
+            self.known_floors.insert(*floor_pos); // goofy ik ik
         }
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
