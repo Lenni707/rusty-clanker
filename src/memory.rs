@@ -1,44 +1,98 @@
 use std::collections::{BTreeMap, HashSet};
-
+use std::collections::VecDeque; // iwie effiezient oder so ka
 use crate::states::GameState;
 
-use crate::decision::astar;
+use crate::helper_func::{get_dist, Pos};
 
 pub struct BotMemory {
-    pub width: i32,
-    pub height: i32,
+    pub config: Config,
 
     pub current_target: Option<GemMemory>,
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
+    pub known_floors: HashSet<[i32; 2]>, // Das ist nur fürs einfacheren arbeiten, anstatt mit known_positions
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
-    
+
+    pub last_pos: Option<Pos>,
+    pub recent_positions: VecDeque<Pos>,
+
+    pub signal: SignalStats,
 }
+
+pub struct Config {
+    pub width: i32,
+    pub height: i32,
+    pub vis_radius: i32,
+    pub max_ticks: u32,
+    pub gem_ttl: u32,
+    pub signal_radius: f32,
+}
+
+pub struct SignalStats {
+    pub signal_target: Option<Pos>,
+    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
+    pub last_signal: Option<f32>,
+    pub ticks_since_signal_up: i32,
+    pub best_signal: f32,
+}
+
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
     pub position: [i32; 2],
     pub ttl: i32,
     last_seen_tick: u32
 }
+
 #[derive(Debug, Clone, Copy)]
 pub struct PositionMemory {
     pub last_seen_tick: u32,
     pub vis_floor_count: usize,
 }
+
+impl Config {
+    pub fn new() -> Self {
+        Config {
+            width: 0,
+            height: 0,
+            vis_radius: 0,
+            max_ticks: 0,
+            gem_ttl: 0,
+            signal_radius: 0.0,
+        }
+    }
+}
+
+impl SignalStats {
+    fn new() -> Self {
+        SignalStats {
+            signal_target: None,
+            gem_signal_map: BTreeMap::new(),
+            last_signal: None,
+            ticks_since_signal_up: 0,
+            best_signal: 0.0,
+        }
+    }
+}
+
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
-            width: 0,
-            height: 0,
+            config: Config::new(),
 
             current_target: None,
             known_gems: BTreeMap::new(),
             known_positions: BTreeMap::new(),
             known_walls: HashSet::new(),
+            known_floors: HashSet::new(),
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
+
+            last_pos: None,
+            recent_positions: VecDeque::new(),
+
+            signal: SignalStats::new()
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -56,6 +110,10 @@ impl BotMemory {
                 },
             );
         }
+
+        // add signal from this field to BTreeMap of all known tiles with a signal
+        self.signal.gem_signal_map.insert(state.bot, state.signal_level);
+        
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
@@ -66,6 +124,7 @@ impl BotMemory {
                     vis_floor_count: state.floor.len(),
                 },
             );
+            self.known_floors.insert(*floor_pos); // goofy ik ik
         }
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
@@ -165,24 +224,6 @@ impl BotMemory {
 
 }
 
-pub fn get_dist(
-    a: [i32; 2],
-    b: [i32; 2],
-    memory: &BotMemory,
-) -> Option<i32> {
-    let path = astar(a, b, &memory.known_walls, memory.width, memory.height);
-
-    let dist = match path {
-        Some(path) => Some(path.len() as i32 - 1),
-        None => {
-            eprintln!("theres no viable path between the points, so dist cant be measured");
-            None
-        }
-    };
-
-    dist
-}
-
 pub fn get_closer_pos(
     goal: [i32; 2],
     a: [i32; 2],
@@ -204,13 +245,3 @@ pub fn get_closer_pos(
         }
     }
 }
-
-
-// pub fn _get_dist(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
-// //     let dx = a[0] - b[0];
-// //     let dy = a[1] - b[1];
-// //     dx * dx + dy * dy
-// // }
-// // fn _heuristic(a: [i32; 2], b: [i32; 2]) -> i32 { // not needed anymore
-// //     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
-// // }

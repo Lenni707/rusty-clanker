@@ -9,6 +9,7 @@ pub struct GameState {
     pub floor: Vec<[i32; 2]>,
     pub visible_gems: Vec<Gem>,
     pub visible_bots: Option<Vec<EnemyBot>>,
+    pub signal_level: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -18,6 +19,7 @@ pub struct Config {
     pub vis_radius: i32,
     pub max_ticks: u32,
     pub gem_ttl: u32,
+    pub signal_radius: f32,
 }
 
 #[derive(Debug, Deserialize)]
