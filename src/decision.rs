@@ -1,9 +1,9 @@
-use std::mem;
 use std::{
     collections::HashSet,
     i32,
 };
 
+use crate::signals::calc_dist_for_level;
 use crate::{memory::BotMemory, states::GameState};
 use crate::explore::*;
 
@@ -44,8 +44,6 @@ pub fn decide(
 ) -> Direction {
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
-        memory.signal.signal_target = None;
-        memory.signal.ticks_since_signal_up = 0;
         t
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
@@ -65,6 +63,10 @@ pub fn decide(
         eprintln!("Kein Exploration Target gefunden - 404 :/");
         return movement_fallback(memory, state);
     };
+
+    if state.signal_level > 0.1 {
+        highlights.draw_circle(state.bot, calc_dist_for_level(state.signal_level, memory.config.signal_radius) as i32, colors::BLUE);
+    }
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
 

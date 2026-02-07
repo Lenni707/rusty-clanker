@@ -1,6 +1,7 @@
 // Feld fürs highlighten
 
 use serde_json::{json, Value};
+use crate::helper_func::heuristic;
 
 
 pub struct Highlighter {
@@ -43,6 +44,20 @@ impl Highlighter {
 
     pub fn clear(&mut self) {
         self.highlights.clear();
+    }
+
+    pub fn draw_circle(&mut self, center: [i32; 2], radius: i32, color: &str) {
+        let r_sq = radius * radius;
+
+        for dx in -radius..=radius {
+            for dy in -radius..=radius {
+                let dist_sq = dx * dx + dy * dy; 
+
+                if dist_sq >= r_sq - radius && dist_sq <= r_sq + radius {
+                    self.add_point([center[0] + dx, center[1] + dy], color);
+                }
+            }
+        }
     }
 }
 

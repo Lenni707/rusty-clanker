@@ -1,10 +1,10 @@
-use serde_json::json;
 use std::io::{self, BufRead, Write};
 
 mod decision;
 mod memory;
 mod states;
 mod explore;
+mod signals;
 mod helper_func;
 mod astar;
 mod highlights;
@@ -53,7 +53,7 @@ fn main() {
             // memory.config.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst // ne danke abi brauch ich nicht
             eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
         }
-
+        
         memory.update(&state);
 
         // Debugging: Path highlighten

@@ -36,6 +36,7 @@ pub struct SignalStats {
     pub last_signal: Option<f32>,
     pub ticks_since_signal_up: i32,
     pub best_signal: f32,
+    pub gem_canidates: Vec<Pos>
 }
 
 #[derive(Debug, PartialEq)]
@@ -72,6 +73,7 @@ impl SignalStats {
             last_signal: None,
             ticks_since_signal_up: 0,
             best_signal: 0.0,
+            gem_canidates: Vec::new()
         }
     }
 }
