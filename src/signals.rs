@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::helper_func::{Pos, heuristic};
 use crate::memory::BotMemory;
 use crate::states::GameState;
@@ -83,6 +85,8 @@ impl ParticleFilter {
 
         for _ in 0..self.num_particles {
             let num_gems = self.rng.gen_range(1..=3); // Zufällinge anzahl an gems, von 1 bis einschließlich 3
+            // TODO: Für die aktuelle Signal sachen: Die Anzahl der etwarteten Gems pro Partikel
+            // schätzen und damit dann mehr Partikel mit dieser Menge erstellen
 
             let mut gems = Vec::new();
 
@@ -202,6 +206,60 @@ impl ParticleFilter {
         let gem_idx = rng.gen_range(0..particle.gem_positions.len());
 
         particle.gem_positions.remove(gem_idx);
+    }
+
+    //==========================================================================
+    // Get the best gem estimate based on average of top cluster
+    //==========================================================================
+    pub fn get_best_gem_estimate(&self) -> Option<Pos> {
+        if self.particles.is_empty() {
+            return None;
+        }
+
+        // Grid Based with weight
+        let grid_size = 3; // TODO: Geratender Wert, der geht besser
+        let mut grid_weights: HashMap<(i32, i32), f32> = HashMap::new();
+
+        for particle in &self.particles {
+            for gem in &particle.gem_positions {
+                let grid_x = gem[0] / grid_size;
+                let grid_y = gem[1] / grid_size;
+                *grid_weights.entry((grid_x, grid_y)).or_insert(0.0) += particle.weight;
+            }
+        }
+
+        // Rust ist schon was :/ aber holt die beste Zelle in dem sie mit allen anderen vergleichen wird.
+        // Das "?" gibt, sollte unwrap throwen, None aus der Funktion zurück
+        let best_cell = grid_weights.iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())?;
+
+        // Hier könnten die Koordinaten zurückgegeben werden. Claude empfielt aber das hier noch die genau geschaut wird wo in der Zelle sich die Gems am wahrscheinlichsten befinden
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut total_weight = 0.0;
+
+        for particle in &self.particles {
+            for gem in &particle.gem_positions {
+                let grid_x = gem[0] / grid_size;
+                let grid_y = gem[1] / grid_size;
+
+                // Wenn die grid positionen der vermuteten Gems in der best_cell sind
+                if (grid_x, grid_y) == *best_cell.0 {
+                    sum_x += gem[0] as f32 * particle.weight; 
+                    sum_y += gem[1] as f32 * particle.weight; // Berechnet den gewichteten Durchschnitt in der Zelle, also wo ist der gem in der Zelle gewichtet am wahrscheinlichsten.
+                    total_weight += particle.weight;
+                }
+            }
+        }
+
+        if total_weight > 0.0 {
+            Some([
+                (sum_x / total_weight).round() as i32,
+                (sum_y / total_weight).round() as i32,
+            ])
+        } else {
+            None
+        }
     }
 }
 

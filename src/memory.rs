@@ -3,6 +3,7 @@ use std::collections::VecDeque; // iwie effiezient oder so ka
 use std::collections::{BTreeMap, HashSet};
 
 use crate::helper_func::{Pos, get_dist};
+use crate::signal_manager::SignalManager;
 
 pub struct BotMemory {
     pub config: Config,
@@ -18,7 +19,7 @@ pub struct BotMemory {
     pub last_pos: Option<Pos>,
     pub recent_positions: VecDeque<Pos>,
 
-    pub signal: SignalStats,
+    pub signal_manager: Option<SignalManager>,
 }
 
 pub struct Config {
@@ -94,11 +95,22 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal: SignalStats::new(),
+            signal_manager: None,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
+        // Initialisieren des SignalManagers, muss hier sein da der Signal manager konstruktor BotMemory braucht
+        if self.config.width > 0 && self.signal_manager.is_none() {
+            self.initialize_signal_manager();
+        }
+
+        // Die aktuelle Messung in den Signalmanager eintragen
+        if let Some(manager) = &mut self.signal_manager {
+            if state.signal_level > 0.0 {
+                manager.add_measurement(state.bot, state.signal_level, state, self);
+            }
+        }
         // Alle Gems Markieren
         for gem in &state.visible_gems {
             // Gems spawns in die Heatmap eintragen,
@@ -224,6 +236,12 @@ impl BotMemory {
         }
 
         best
+    }
+
+    pub fn initialize_signal_manager(&mut self) {
+        if self.signal_manager.is_none() {
+            self.signal_manager = Some(SignalManager::new(self));
+        }
     }
 }
 

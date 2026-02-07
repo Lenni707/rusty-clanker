@@ -7,6 +7,7 @@ mod helper_func;
 mod highlights;
 mod memory;
 mod signals;
+mod signal_manager;
 mod states;
 
 use decision::decide;
