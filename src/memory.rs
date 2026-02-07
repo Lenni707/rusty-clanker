@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, HashSet};
-use std::collections::VecDeque; // iwie effiezient oder so ka
 use crate::states::GameState;
+use std::collections::VecDeque; // iwie effiezient oder so ka
+use std::collections::{BTreeMap, HashSet};
 
-use crate::helper_func::{get_dist, Pos};
+use crate::helper_func::{Pos, get_dist};
+use crate::signal_manager::SignalManager;
 
 pub struct BotMemory {
     pub config: Config,
@@ -18,7 +19,7 @@ pub struct BotMemory {
     pub last_pos: Option<Pos>,
     pub recent_positions: VecDeque<Pos>,
 
-    pub signal: SignalStats,
+    pub signal_manager: Option<SignalManager>,
 }
 
 pub struct Config {
@@ -36,13 +37,14 @@ pub struct SignalStats {
     pub last_signal: Option<f32>,
     pub ticks_since_signal_up: i32,
     pub best_signal: f32,
+    pub gem_canidates: Vec<Pos>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
     pub position: [i32; 2],
     pub ttl: i32,
-    last_seen_tick: u32
+    last_seen_tick: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -72,6 +74,7 @@ impl SignalStats {
             last_signal: None,
             ticks_since_signal_up: 0,
             best_signal: 0.0,
+            gem_canidates: Vec::new(),
         }
     }
 }
@@ -92,11 +95,22 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal: SignalStats::new()
+            signal_manager: None,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
+        // Initialisieren des SignalManagers, muss hier sein da der Signal manager konstruktor BotMemory braucht
+        if self.config.width > 0 && self.signal_manager.is_none() {
+            self.initialize_signal_manager();
+        }
+
+        // Die aktuelle Messung in den Signalmanager eintragen
+        if let Some(manager) = &mut self.signal_manager {
+            if state.signal_level > 0.0 {
+                manager.add_measurement(state.bot, state.signal_level, state, self);
+            }
+        }
         // Alle Gems Markieren
         for gem in &state.visible_gems {
             // Gems spawns in die Heatmap eintragen,
@@ -106,14 +120,13 @@ impl BotMemory {
                 GemMemory {
                     position: gem.position,
                     ttl: gem.ttl,
-                    last_seen_tick: state.tick
+                    last_seen_tick: state.tick,
                 },
             );
         }
 
         // add signal from this field to BTreeMap of all known tiles with a signal
-        self.signal.gem_signal_map.insert(state.bot, state.signal_level);
-        
+
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
         for floor_pos in &state.floor {
@@ -171,7 +184,7 @@ impl BotMemory {
                     self.current_target = Some(GemMemory {
                         position: pos,
                         ttl: gem.ttl,
-                        last_seen_tick: state.tick
+                        last_seen_tick: state.tick,
                     });
                 }
             }
@@ -199,12 +212,15 @@ impl BotMemory {
                 None => continue, // unreachable gem
             };
 
-            let age = state.tick - gem_mem.last_seen_tick; 
-            let ttl_now = gem_mem.ttl - age as i32; 
-            if ttl_now <= 0 { continue } // wenn gem despawnt ist
+            let age = state.tick - gem_mem.last_seen_tick;
+            let ttl_now = gem_mem.ttl - age as i32;
+            if ttl_now <= 0 {
+                continue;
+            } // wenn gem despawnt ist
 
-            if ttl_now <= dist { // if gem despawns before possible arrival if dist >= ttl_now { continue; }
-                continue
+            if ttl_now <= dist {
+                // if gem despawns before possible arrival if dist >= ttl_now { continue; }
+                continue;
             }
 
             if dist < best_dist {
@@ -222,6 +238,11 @@ impl BotMemory {
         best
     }
 
+    pub fn initialize_signal_manager(&mut self) {
+        if self.signal_manager.is_none() {
+            self.signal_manager = Some(SignalManager::new(self));
+        }
+    }
 }
 
 pub fn get_closer_pos(
@@ -235,7 +256,11 @@ pub fn get_closer_pos(
 
     match (dist_a, dist_b) {
         (Some(da), Some(db)) => {
-            if da <= db { Some(a) } else { Some(b) }
+            if da <= db {
+                Some(a)
+            } else {
+                Some(b)
+            }
         }
         (Some(_), None) => Some(a),
         (None, Some(_)) => Some(b),

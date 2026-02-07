@@ -49,3 +49,7 @@ Nachdem ich Chatgpt meine 2am idee präsentiert habe, hat er mir diesen algoryth
 	•	Particle Filter (Sequential Monte Carlo):
 
 https://de.wikipedia.org/wiki/Sequenzielle_Monte-Carlo-Methode
+
+
+//==========================================================================
+Für die aktuelle Signal sachen: Die Anzahl der etwarteten Gems pro Partikel schätzen und damit dann mehr Partikel mit dieser Menge erstellen

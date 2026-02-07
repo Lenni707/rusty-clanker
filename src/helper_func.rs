@@ -16,12 +16,14 @@ pub fn euclidean(a: [i32; 2], b: [i32; 2]) -> f32 {
     (dx * dx + dy * dy).sqrt()
 }
 
-pub fn get_dist(
-    a: [i32; 2],
-    b: [i32; 2],
-    memory: &BotMemory,
-) -> Option<i32> {
-    let path = astar(a, b, &memory.known_walls, memory.config.width, memory.config.height);
+pub fn get_dist(a: [i32; 2], b: [i32; 2], memory: &BotMemory) -> Option<i32> {
+    let path = astar(
+        a,
+        b,
+        &memory.known_walls,
+        memory.config.width,
+        memory.config.height,
+    );
 
     let dist = match path {
         Some(path) => Some(path.len() as i32 - 1),
@@ -39,9 +41,9 @@ pub fn get_neighbours(pos: Pos) -> [Pos; 4] {
 
     [
         [pos[0] - 1, pos[1]],
-        [pos[0] + 1, pos[1]], 
-        [pos[0], pos[1]  - 1], 
-        [pos[0], pos[1]  + 1]
+        [pos[0] + 1, pos[1]],
+        [pos[0], pos[1] - 1],
+        [pos[0], pos[1] + 1],
     ]
 }
 
@@ -53,6 +55,7 @@ pub fn is_free(memory: &BotMemory, p: Pos) -> bool {
     is_in_bounds(p, memory.config.width, memory.config.height) && !memory.known_walls.contains(&p)
 }
 
-pub fn clamp_pos(p: Pos, w: i32, h: i32) -> Pos { // make sure pos is within maprange (pos < width and height)
+pub fn clamp_pos(p: Pos, w: i32, h: i32) -> Pos {
+    // make sure pos is within maprange (pos < width and height)
     [p[0].clamp(0, w - 1), p[1].clamp(0, h - 1)]
 }

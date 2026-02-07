@@ -1,18 +1,12 @@
-use crate::{memory::BotMemory, states::GameState, helper_func::*};
+use crate::{helper_func::*, memory::BotMemory, states::GameState};
 
-use std::{
-    collections::HashSet,
-    i32,
-};
+use std::{collections::HashSet, i32};
 
 // =====================================================
 // EXPLORATION von unbekannten Orten (spooky)
 // =====================================================
 
-pub fn get_exploration_target(
-    state: &GameState,
-    memory: &BotMemory,
-) -> Option<[i32; 2]> {
+pub fn get_exploration_target(state: &GameState, memory: &BotMemory) -> Option<[i32; 2]> {
     // Verwendet eine Liste aus kürzlich besuchten tiles, um neune zu unbekannt Tiles zu besuchen
     let curr_tick = state.tick;
     let curr_floor_count = state.floor.len();
@@ -98,7 +92,11 @@ pub fn get_frontiers(memory: &BotMemory) -> Vec<[i32; 2]> {
             let neighbor = [known_pos[0] + dx, known_pos[1] + dy];
 
             // Bounds Check
-            if neighbor[0] < 0 || neighbor[0] >= memory.config.width || neighbor[1] < 0 || neighbor[1] >= memory.config.height {
+            if neighbor[0] < 0
+                || neighbor[0] >= memory.config.width
+                || neighbor[1] < 0
+                || neighbor[1] >= memory.config.height
+            {
                 continue;
             }
 
@@ -122,9 +120,9 @@ pub fn should_abort_exploration(
     state: &GameState,
     target: [i32; 2],
     memory: &BotMemory,
-    vis_range: i32
+    vis_range: i32,
 ) -> bool {
-    // if state.tick < 200 { 
+    // if state.tick < 200 {
     //     return false;
     // }
     let distance = heuristic(state.bot, target);
@@ -133,22 +131,22 @@ pub fn should_abort_exploration(
     if distance > vis_range * 2 {
         return false; // FIXME: Hier könnten Fehler auftregen, da die dist nicht die Wände mit einbezieht. Das klingt für mich aber nicht schlimm, da der Felher dann später gefunden wird.
     }
-    
+
     let tiles_at_target = get_visible_tiles_from_pos(
-        target, 
-        &memory.known_walls, 
+        target,
+        &memory.known_walls,
         &memory.known_floors,
-        vis_range, 
-        memory.config.width, 
-        memory.config.height
+        vis_range,
+        memory.config.width,
+        memory.config.height,
     );
 
     let tiles_now = get_visible_tiles_from_pos(
-        state.bot, 
+        state.bot,
         &memory.known_walls,
         &memory.known_floors,
-        vis_range, 
-        memory.config.width, 
+        vis_range,
+        memory.config.width,
         memory.config.height,
     );
 
@@ -159,12 +157,13 @@ pub fn should_abort_exploration(
             new_counter += 1;
         }
     }
-    if new_counter >= 3 { //TODO: Diese 3 hier ändern und testen
+    if new_counter >= 3 {
+        //TODO: Diese 3 hier ändern und testen
         eprintln!("Aborting Exploration");
         // FIXME: memory.aborted_pos.insert(target, state.tick);
         return true;
     }
-    
+
     false // Sollte nicht abgebrochen werden
 }
 
@@ -174,7 +173,7 @@ pub fn get_visible_tiles_from_pos(
     known_floors: &HashSet<[i32; 2]>,
     vis_range: i32,
     width: i32,
-    height: i32
+    height: i32,
 ) -> HashSet<[i32; 2]> {
     let mut visible = HashSet::new();
 
@@ -205,9 +204,9 @@ pub fn has_line_of_sight(
     from: [i32; 2],
     to: [i32; 2],
     walls: &HashSet<[i32; 2]>,
-    vis_range: i32
+    vis_range: i32,
 ) -> bool {
-    // Holt alle Felder anhand der 
+    // Holt alle Felder anhand der
     // https://www.redblobgames.com/articles/visibility/ das ist gut
     let dist = heuristic(from, to);
 
@@ -230,7 +229,7 @@ pub fn has_line_of_sight(
     let x_steps = dx as f32 / steps as f32;
     let y_steps = dy as f32 / steps as f32;
 
-    // Nummers als floats nehmen, 
+    // Nummers als floats nehmen,
     let mut x = from[0] as f32;
     let mut y = from[1] as f32;
 
