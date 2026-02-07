@@ -28,7 +28,7 @@ impl SignalManager {
         // Resample, checking effective sample size
         // Das kommt noch, haben wir nicht implementiert. Deswegen TODO:
 
-        self.filter.resample(); // Das macht noch nichts du depp
+        self.filter.resample();
 
         // adding variaiton
         self.filter.jitter();
