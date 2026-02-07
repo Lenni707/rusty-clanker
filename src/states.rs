@@ -18,6 +18,7 @@ pub struct Config {
     pub vis_radius: i32,
     pub max_ticks: u32,
     pub gem_ttl: u32,
+    pub signal_radius: f32,
 }
 
 #[derive(Debug, Deserialize)]
