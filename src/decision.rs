@@ -1,6 +1,7 @@
 use std::{collections::HashSet, i32};
 
-use crate::explore::*;
+use crate::signal_manager::SignalManager;
+use crate::{explore::*, signal_manager};
 use crate::signals::calc_dist_for_level;
 use crate::{memory::BotMemory, states::GameState};
 
@@ -38,11 +39,15 @@ pub fn decide(
     state: &GameState,
     memory: &mut BotMemory,
     highlights: &mut Highlighter,
+    signal_manager: &SignalManager
 ) -> Direction {
     let target = if let Some(t) = memory.get_target() {
         // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
         t
+    } else if let Some(pos) = signal_manager.get_target() && state.signal_level > 0.0 { // if there is a signal target
+        highlights.add_point(pos, colors::PURPLE);
+        pos
     } else if let Some(pos) = memory.exploration_target {
         // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
@@ -51,6 +56,7 @@ pub fn decide(
         //     return Direction::Wait; // TODO: Hier noch einbauen, das direkt das nächste Ziel verwendet wird
         // }
         pos
+
     } else if let Some(new_target) = get_exploration_target(state, memory) {
         // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
@@ -120,14 +126,12 @@ pub fn decide(
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
-            memory.signal.signal_target = None;
             // Ziel wurde erreicht
             return movement_fallback(&memory, state);
         }
     }
 
     memory.exploration_target = None;
-    memory.signal.signal_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {

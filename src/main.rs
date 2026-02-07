@@ -17,6 +17,8 @@ use crate::memory::BotMemory;
 
 use crate::highlights::Highlighter;
 
+use crate::signal_manager::SignalManager;
+
 fn main() {
     eprint!("A small step for the bot, but a giant leap for the developers");
 
@@ -60,10 +62,11 @@ fn main() {
 
         memory.update(&state);
 
+        let signal_manager = SignalManager::new(&memory);
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
 
-        let dir = decide(&state, &mut memory, &mut highlights);
+        let dir = decide(&state, &mut memory, &mut highlights, &signal_manager);
 
         memory.last_pos = Some(state.bot); // get last pos
 

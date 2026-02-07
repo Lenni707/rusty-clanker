@@ -9,6 +9,7 @@ use rand::{Rng, SeedableRng};
 
 // weight ist |particle signal sum - bot.signal_level|
 
+#[derive(Clone)]
 pub struct Particle {
     pub gem_positions: Vec<Pos>,
     pub weight: f32,
@@ -134,8 +135,38 @@ impl ParticleFilter {
         }
     }
 
-    pub fn resample(&self) {
-        return;
+    pub fn resample(&mut self) {
+        let mut new_particles = Vec::new();
+        
+        // Systematic Resampling (effizienter als naive Methode)
+        let mut cumulative = Vec::new();
+        let mut sum = 0.0;
+        for p in &self.particles {
+            sum += p.weight;
+            cumulative.push(sum);
+        }
+        
+        // Ziehe num_particles neue Partikel basierend auf Gewichten
+        let step = 1.0 / self.num_particles as f32;
+        let start: f32 = self.rng.gen_range(0.0..step);
+        
+        let mut idx = 0;
+        for i in 0..self.num_particles {
+            let target = start + i as f32 * step;
+            
+            while idx < cumulative.len() - 1 && cumulative[idx] < target { // only pushes good wheighing particles
+                idx += 1;
+            }
+            
+            new_particles.push(self.particles[idx].clone());
+        }
+        
+        self.particles = new_particles;
+        
+        // Reset weights
+        for p in &mut self.particles {
+            p.weight = 1.0 / self.num_particles as f32;
+        }
     }
 
     //==========================================================================

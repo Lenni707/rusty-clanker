@@ -106,9 +106,11 @@ impl BotMemory {
         }
 
         // Die aktuelle Messung in den Signalmanager eintragen
-        if let Some(manager) = &mut self.signal_manager {
-            if state.signal_level > 0.0 {
+        if state.signal_level > 0.0 {
+            // .take wegen rust borrowing
+            if let Some(mut manager) = self.signal_manager.take() {
                 manager.add_measurement(state.bot, state.signal_level, state, self);
+                self.signal_manager = Some(manager);
             }
         }
         // Alle Gems Markieren

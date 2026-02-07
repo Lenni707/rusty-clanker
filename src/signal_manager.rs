@@ -1,4 +1,4 @@
-use crate::{helper_func::Pos, memory::{self, BotMemory}, signals::*, states::GameState};
+use crate::{helper_func::Pos, memory::{BotMemory}, signals::*, states::GameState};
 
 pub struct SignalManager {
     pub filter: ParticleFilter,
