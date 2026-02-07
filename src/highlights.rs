@@ -1,11 +1,10 @@
 // Feld fürs highlighten
 
-use serde_json::{json, Value};
 use crate::helper_func::heuristic;
-
+use serde_json::{Value, json};
 
 pub struct Highlighter {
-    highlights: Vec<([i32; 2], String)>
+    highlights: Vec<([i32; 2], String)>,
 }
 
 impl Highlighter {
@@ -34,7 +33,8 @@ impl Highlighter {
             return json!({});
         }
 
-        let highlights_array: Vec<Value> = self.highlights
+        let highlights_array: Vec<Value> = self
+            .highlights
             .iter()
             .map(|(pos, color)| json!([pos[0], pos[1], color]))
             .collect();
@@ -51,7 +51,7 @@ impl Highlighter {
 
         for dx in -radius..=radius {
             for dy in -radius..=radius {
-                let dist_sq = dx * dx + dy * dy; 
+                let dist_sq = dx * dx + dy * dy;
 
                 if dist_sq >= r_sq - radius && dist_sq <= r_sq + radius {
                     self.add_point([center[0] + dx, center[1] + dy], color);
@@ -60,7 +60,6 @@ impl Highlighter {
         }
     }
 }
-
 
 // Vordefinierte Farben als Konstanten für bessere Lesbarkeit
 pub mod colors {

@@ -40,7 +40,6 @@ impl PartialOrd for Node {
     }
 }
 
-
 // 2. Gibt alle Nachbarn zurück, no shit right?
 fn get_neighbors(pos: [i32; 2]) -> Vec<[i32; 2]> {
     vec![

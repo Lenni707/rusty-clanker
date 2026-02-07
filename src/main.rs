@@ -1,13 +1,13 @@
 use std::io::{self, BufRead, Write};
 
-mod decision;
-mod memory;
-mod states;
-mod explore;
-mod signals;
-mod helper_func;
 mod astar;
+mod decision;
+mod explore;
+mod helper_func;
 mod highlights;
+mod memory;
+mod signals;
+mod states;
 
 use decision::decide;
 use states::GameState;
@@ -51,14 +51,17 @@ fn main() {
             memory.config.gem_ttl = cfg.gem_ttl;
             memory.config.signal_radius = cfg.signal_radius;
             // memory.config.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst // ne danke abi brauch ich nicht
-            eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
+            eprintln!(
+                "Width: {}, Height: {}",
+                memory.config.width, memory.config.height
+            );
         }
-        
+
         memory.update(&state);
 
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
-        
+
         let dir = decide(&state, &mut memory, &mut highlights);
 
         memory.last_pos = Some(state.bot); // get last pos

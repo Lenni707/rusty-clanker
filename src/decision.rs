@@ -1,11 +1,8 @@
-use std::{
-    collections::HashSet,
-    i32,
-};
+use std::{collections::HashSet, i32};
 
+use crate::explore::*;
 use crate::signals::calc_dist_for_level;
 use crate::{memory::BotMemory, states::GameState};
-use crate::explore::*;
 
 use crate::astar::astar;
 use crate::helper_func::*;
@@ -40,32 +37,37 @@ impl Direction {
 pub fn decide(
     state: &GameState,
     memory: &mut BotMemory,
-    highlights: &mut Highlighter
+    highlights: &mut Highlighter,
 ) -> Direction {
-    let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
+    let target = if let Some(t) = memory.get_target() {
+        // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
         t
-    }
-    else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
+    } else if let Some(pos) = memory.exploration_target {
+        // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
         // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {
         //     memory.exploration_target = None;
         //     return Direction::Wait; // TODO: Hier noch einbauen, das direkt das nächste Ziel verwendet wird
         // }
         pos
-    } 
-    else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
+    } else if let Some(new_target) = get_exploration_target(state, memory) {
+        // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
         highlights.add_point(new_target, colors::GREEN);
         new_target
-    } 
-    else { // if picking new target also failed, revert to movement fallback
+    } else {
+        // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
         return movement_fallback(memory, state);
     };
 
     if state.signal_level > 0.1 {
-        highlights.draw_circle(state.bot, calc_dist_for_level(state.signal_level, memory.config.signal_radius) as i32, colors::BLUE);
+        highlights.draw_circle(
+            state.bot,
+            calc_dist_for_level(state.signal_level, memory.config.signal_radius) as i32,
+            colors::BLUE,
+        );
     }
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
@@ -74,7 +76,7 @@ pub fn decide(
     if let Some(bots) = &state.visible_bots {
         for bot in bots {
             let dist_bots = heuristic(state.bot, bot.position);
-            if dist_bots < 3 { 
+            if dist_bots < 3 {
                 walls.insert(bot.position);
             }
         }
@@ -82,11 +84,11 @@ pub fn decide(
 
     // Finde den Weg mit A*
     let path = astar(
-        state.bot, 
-        target, 
-        &walls, 
-        memory.config.width, 
-        memory.config.height
+        state.bot,
+        target,
+        &walls,
+        memory.config.width,
+        memory.config.height,
     );
 
     // Wenn wir einen Pfad gefunden haben move through path:
@@ -105,13 +107,12 @@ pub fn decide(
                 colors::GREEN
             };
             highlights.add_path(path, path_color);
-            
 
             return match (dx, dy) {
                 (1, 0) => Direction::Right, // X+1 = rechts
                 (-1, 0) => Direction::Left, // X-1 = links
-                (0, 1) => Direction::Down, // Y+1 = unten
-                (0, -1) => Direction::Up, // Y-1 = oben
+                (0, 1) => Direction::Down,  // Y+1 = unten
+                (0, -1) => Direction::Up,   // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
                     return movement_fallback(&memory, state);
@@ -119,14 +120,14 @@ pub fn decide(
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
-            memory.signal.signal_target = None; 
+            memory.signal.signal_target = None;
             // Ziel wurde erreicht
             return movement_fallback(&memory, state);
         }
     }
 
     memory.exploration_target = None;
-    memory.signal.signal_target = None; 
+    memory.signal.signal_target = None;
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {
@@ -150,26 +151,46 @@ fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
     let height = memory.config.height;
     let center = [width / 2, height / 2];
     let current = state.bot;
-    
+
     // Richtung zur Mitte
     let dx = center[0] - current[0];
     let dy = center[1] - current[1];
-    
+
     // Priorisierte Richtungen basierend auf Distanz zur Mitte
     let preferred_directions = if dx.abs() > dy.abs() {
         if dx > 0 {
-            vec![Direction::Right, Direction::Down, Direction::Up, Direction::Left]
+            vec![
+                Direction::Right,
+                Direction::Down,
+                Direction::Up,
+                Direction::Left,
+            ]
         } else {
-            vec![Direction::Left, Direction::Down, Direction::Up, Direction::Right]
+            vec![
+                Direction::Left,
+                Direction::Down,
+                Direction::Up,
+                Direction::Right,
+            ]
         }
     } else {
         if dy > 0 {
-            vec![Direction::Down, Direction::Right, Direction::Left, Direction::Up]
+            vec![
+                Direction::Down,
+                Direction::Right,
+                Direction::Left,
+                Direction::Up,
+            ]
         } else {
-            vec![Direction::Up, Direction::Right, Direction::Left, Direction::Down]
+            vec![
+                Direction::Up,
+                Direction::Right,
+                Direction::Left,
+                Direction::Down,
+            ]
         }
     };
-    
+
     // Finde erste gültige Richtung aus den priorisierten
     for dir in preferred_directions {
         let next_pos = match dir {
@@ -179,12 +200,11 @@ fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
             Direction::Up => [current[0], current[1] - 1],
             Direction::Wait => current,
         };
-        
-        if is_in_bounds(next_pos, width, height) 
-           && !memory.known_walls.contains(&next_pos) {
+
+        if is_in_bounds(next_pos, width, height) && !memory.known_walls.contains(&next_pos) {
             return dir;
         }
     }
-    
+
     Direction::Wait // Wenn alle Richtungen blockiert sind
 }
