@@ -47,3 +47,5 @@ woher weiß ich wie viele Gems es genau gerade gibt
 
 Nachdem ich Chatgpt meine 2am idee präsentiert habe, hat er mir diesen algorythmus als besser vorgeschlagen:
 	•	Particle Filter (Sequential Monte Carlo):
+
+https://de.wikipedia.org/wiki/Sequenzielle_Monte-Carlo-Methode
