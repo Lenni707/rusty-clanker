@@ -112,7 +112,6 @@ impl BotMemory {
         }
 
         // add signal from this field to BTreeMap of all known tiles with a signal
-        self.signal.gem_signal_map.insert(state.bot, state.signal_level);
         
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.

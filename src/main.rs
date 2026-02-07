@@ -4,7 +4,6 @@ use std::io::{self, BufRead, Write};
 mod decision;
 mod memory;
 mod states;
-mod signal;
 mod explore;
 mod helper_func;
 mod astar;
@@ -63,7 +62,6 @@ fn main() {
         let dir = decide(&state, &mut memory, &mut highlights);
 
         memory.last_pos = Some(state.bot); // get last pos
-        memory.signal.last_signal = Some(state.signal_level); // get last signal
 
         let highlights_json = highlights.to_json();
         println!("{} {}", dir.as_geo(), highlights_json);

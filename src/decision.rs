@@ -4,7 +4,6 @@ use std::{
     i32,
 };
 
-use crate::signal::move_to_signal;
 use crate::{memory::BotMemory, states::GameState};
 use crate::explore::*;
 
@@ -48,9 +47,6 @@ pub fn decide(
         memory.signal.signal_target = None;
         memory.signal.ticks_since_signal_up = 0;
         t
-    }
-    else if state.signal_level != 0.0 {
-        move_to_signal(memory, state)
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
