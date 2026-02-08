@@ -1,6 +1,5 @@
 use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
-use crate::memory::BotMemory;
-use crate::states::GameState;
+use crate::astar::astar;
 
 use std::collections::{HashMap, HashSet};
 
@@ -9,15 +8,17 @@ pub struct SignalSolver {
     width: i32,
     height: i32,
     signal_radius: f32,
+    bot_pos:Pos
 }
 
 impl SignalSolver {
-    pub fn new(width: i32, height: i32, signal_radius: f32) -> Self {
+    pub fn new(width: i32, height: i32, signal_radius: f32, bot_pos: Pos) -> Self {
         SignalSolver {
             width,
             height,
             signal_radius,
             measurements: Vec::new(),
+            bot_pos: bot_pos
         }
     }
     pub fn add_measurement(&mut self, signal_level: f32, pos: Pos) {
@@ -87,7 +88,12 @@ impl SignalSolver {
         if self.measurements.is_empty() {
             return None;
         }
-        
+        // if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
+        //     self.signal_target = None;
+        //     self.last_signal_targets.clear();
+        //     eprintln!("No way found, reseting signal_taret");
+        //     return None;
+        // }
         // Coarse search: every 5th cell
         let step = 5;
         let mut best_score = 0.0;
@@ -96,14 +102,14 @@ impl SignalSolver {
         for x1 in (0..self.width).step_by(step) {
             for y1 in (0..self.height).step_by(step) {
                 let pos1 = [x1, y1];
-                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
+                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
                     continue;
                 }
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
                         let pos2 = [x2, y2];
-                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
+                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
                             continue;
                         }
                         
@@ -139,21 +145,21 @@ impl SignalSolver {
         for x1 in (0..self.width).step_by(step) {
             for y1 in (0..self.height).step_by(step) {
                 let pos1 = [x1, y1];
-                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
+                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
                     continue;
                 }
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
                         let pos2 = [x2, y2];
-                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
+                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
                             continue;
                         }
                         
                         for x3 in (0..self.width).step_by(step) {
                             for y3 in (0..self.height).step_by(step) {
                                 let pos3 = [x3, y3];
-                                if known_walls.contains(&pos3) || vis_floors.contains(&pos3) {
+                                if known_walls.contains(&pos3) || vis_floors.contains(&pos3) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
                                     continue;
                                 }
                                 
@@ -200,7 +206,7 @@ impl SignalSolver {
                     // Check bounds and validity
                     if new_pos[0] < 0 || new_pos[0] >= self.width || 
                        new_pos[1] < 0 || new_pos[1] >= self.height ||
-                       known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) {
+                       known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) || astar(self.bot_pos, new_pos, known_walls, self.width, self.height).is_none() {
                         continue;
                     }
                     

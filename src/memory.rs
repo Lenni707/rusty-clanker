@@ -26,6 +26,8 @@ pub struct BotMemory {
     pub signal: SignalStats,
     pub signal_target: Option<Pos>,
     pub last_signal_targets: Vec<Pos>,
+
+    pub bot_pos:
 }
 
 pub struct Config {
@@ -99,7 +101,7 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal_solver: SignalSolver::new(49, 29, 5.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6]), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
 
             signal: SignalStats::new(),
             signal_target: None,
@@ -228,6 +230,8 @@ impl BotMemory {
     pub fn get_signal_target(&mut self, bot_pos: Pos) -> Option<Pos> {
         if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
             self.signal_target = None;
+            self.last_signal_targets.clear();
+            eprintln!("No way found, reseting signal_taret");
             return None;
         }
         match &self.signal_target {

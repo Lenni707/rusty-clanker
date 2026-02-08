@@ -55,6 +55,11 @@ pub fn decide(
         t
     }
     else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
+        if astar(state.bot, pos, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
+            // Target not rachable
+            eprintln!("TARGET NOT REACHABLE");
+            return movement_fallback(memory, state);
+        }
         highlights.add_point(pos, colors::PURPLE);
         // Check ob das Target Konstant ist:
         memory.last_signal_targets.push(pos);
