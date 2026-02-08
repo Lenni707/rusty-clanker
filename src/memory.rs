@@ -104,16 +104,16 @@ impl BotMemory {
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
         // Initialisieren des SignalManagers, muss hier sein da der Signal manager konstruktor BotMemory braucht
-        if state.tick == 0 {
-            eprintln!("Should init");
-            self.signal_manager.initialize_sig_man(&self.known_walls, &state.floor);
-            self.signal_manager = SignalManager::new(
-                self.config.width, 
-                self.config.height, 
-                self.config.signal_radius
-            );
-            self.signal_manager.intitialized = true;
-        }
+        // if state.tick == 0 {
+        //     eprintln!("Should init");
+        //     self.signal_manager.initialize_sig_man(&self.known_walls, &state.floor);
+        //     self.signal_manager = SignalManager::new(
+        //         self.config.width, 
+        //         self.config.height, 
+        //         self.config.signal_radius
+        //     );
+        //     self.signal_manager.intitialized = true;
+        // }
 
         // Die aktuelle Messung in den Signalmanager eintragen
         if state.signal_level > 0.0 {

@@ -23,23 +23,34 @@ impl Particle {
     }
 }
 
-fn gen_random_free_pos(width: i32, height: i32, vis_floor: &Vec<Pos>, known_walls: &HashSet<Pos>, rng: &mut StdRng) -> Pos {
-    loop {
-        let pos = [
-            rng.gen_range(0..width), 
-            rng.gen_range(0..height),
-        ];
+fn gen_random_free_pos(
+    width: i32,
+    height: i32,
+    vis_floor: &Vec<Pos>,
+    known_walls: &HashSet<Pos>,
+    rng: &mut StdRng,
+) -> Pos {
+    if width <= 0 || height <= 0 {
+        return [49, 29]; // FUCK ANY OF YOU
+    }
+
+    let max_attemps = 1000;
+
+    for _ in 0..max_attemps {
+        let pos = [rng.gen_range(0..width), rng.gen_range(0..height)];
         if !vis_floor.contains(&pos) && !known_walls.contains(&pos) {
             return pos;
         }
     }
+
+    [width / 2, height / 2]
 }
 
 pub struct ParticleFilter {
-    pub particles: Vec<Particle>,    // Vec aus Hypothesen
-    num_particles: usize,        // wv Partikel
-    rng: StdRng,                 // für rng basierend auf dem seed
-    jitter_config: JitterConfig, // Erklärung steht bei der implementierung
+    pub particles: Vec<Particle>, // Vec aus Hypothesen
+    num_particles: usize,         // wv Partikel
+    rng: StdRng,                  // für rng basierend auf dem seed
+    jitter_config: JitterConfig,  // Erklärung steht bei der implementierung
     width: i32, // Fuck you wenn du sagst das das ineffizient ist weißt du durch wie viele Funktionen in memory durchgeben müsste??
     height: i32, // Das ist jetzt so wenn du damit ein Problem hast dann ist das jetzt wohl so
     signal_radius: f32,
@@ -80,7 +91,13 @@ impl ParticleFilter {
 
             for _ in 0..num_gems {
                 // Zufällinge Positionen für die guesses
-                let guessed_pos = gen_random_free_pos(self.width, self.height, vis_floor, known_walls, &mut self.rng); // ik im sorry
+                let guessed_pos = gen_random_free_pos(
+                    self.width,
+                    self.height,
+                    vis_floor,
+                    known_walls,
+                    &mut self.rng,
+                ); // ik im sorry
 
                 gems.push(guessed_pos);
             }
@@ -101,7 +118,6 @@ impl ParticleFilter {
         for particle in &mut self.particles {
             // Was würde ich in der angenommenen Welt messen
             let expected = particle.get_signal_sum(bot_pos, self.signal_radius);
-
             // Wie gut ist das erwartete im Vergleich zum echten Ergebnis?
             let diff = (expected - observed_signal).abs();
 
@@ -129,7 +145,7 @@ impl ParticleFilter {
         }
 
         let mut new_particles = Vec::new();
-        
+
         // Systematic Resampling (effizienter als naive Methode)
         let mut cumulative = Vec::new();
         let mut sum = 0.0;
@@ -137,24 +153,25 @@ impl ParticleFilter {
             sum += p.weight;
             cumulative.push(sum);
         }
-        
+
         // Ziehe num_particles neue Partikel basierend auf Gewichten
         let step = 1.0 / self.num_particles as f32;
         let start: f32 = self.rng.gen_range(0.0..step);
-        
+
         let mut idx = 0;
         for i in 0..self.num_particles {
             let target = start + i as f32 * step;
-            
-            while idx < cumulative.len() - 1 && cumulative[idx] < target { // only pushes good wheighing particles // index out of bounds
+
+            while idx < cumulative.len() - 1 && cumulative[idx] < target {
+                // only pushes good wheighing particles // index out of bounds
                 idx += 1;
             }
-            
+
             new_particles.push(self.particles[idx].clone());
         }
-        
+
         self.particles = new_particles;
-        
+
         // Reset weights
         for p in &mut self.particles {
             p.weight = 1.0 / self.num_particles as f32;
@@ -177,18 +194,11 @@ impl ParticleFilter {
 
         for particle in particles.iter_mut() {
             let action: f32 = rng.r#gen();
-
             // Ich entschuldige mich dafür, aber das muss so da ich sonst 2 &mut self.particles habe. So lasse ich das. #FIXME oder nicht idc
             // Die funktionen dürfen self nicht als parameter haben, da sonst das iterieren über &mut self.particles und auch das verändern von particle
             // in den fn 2 mutable Referencen sind. Das ist sehr traurig aber da müssen wir jetzt durch wir gewinnen duch einsammeln nicht durch schönen code.
             if action < self.jitter_config.move_prob {
-                Self::move_gem(
-                    particle,
-                    move_range,
-                    width,
-                    height,
-                    rng,
-                );
+                Self::move_gem(particle, move_range, width, height, rng);
             } else if action < self.jitter_config.move_prob + self.jitter_config.add_prob {
                 Self::add_random_gem(particle, known_walls, vis_floor, width, height, rng);
             } else {
@@ -209,20 +219,40 @@ impl ParticleFilter {
         height: i32,
         rng: &mut StdRng,
     ) {
+        let width = 48;
+        let height = 28;
         if particle.gem_positions.is_empty() {
             return;
         }
+        if range <= 0 {
+            return;
+        }
+        // Guard gegen ungültige Dimensionen
+        if width <= 1 || height <= 1 {
+            eprintln!("WARNING: Invalid dimensions in move_gem: {}x{}", width, height);
+            return;
+        }
+        
         let gem_index = rng.gen_range(0..particle.gem_positions.len());
-        let move_x = rng.gen_range(-range..range);
-        let move_y = rng.gen_range(-range..range);
-
+        let move_x = rng.gen_range(-range..=range);
+        let move_y = rng.gen_range(-range..=range);
+        
         let old_pos = particle.gem_positions[gem_index];
-        let new_x = (old_pos[0] + move_x).clamp(1, width - 1); // TODO: Maybe sind die Werte hier shit, aber sie sind glaub ich schon logisch
+        let new_x = (old_pos[0] + move_x).clamp(1, width - 1); // TODO: Maybe sind die Werte hier shit, aber sie sind glaub ich schon logisch /// ERROR ERROR
         let new_y = (old_pos[1] + move_y).clamp(1, height - 1);
-
+        
         particle.gem_positions[gem_index] = [new_x, new_y]
     }
-    pub fn add_random_gem(particle: &mut Particle, known_walls: &HashSet<Pos>, vis_floor: &Vec<Pos>, width: i32, height: i32, rng: &mut StdRng) {
+    pub fn add_random_gem(
+        particle: &mut Particle,
+        known_walls: &HashSet<Pos>,
+        vis_floor: &Vec<Pos>,
+        width: i32,
+        height: i32,
+        rng: &mut StdRng,
+    ) {
+        let width = 49;
+        let height = 29;
         if particle.gem_positions.len() >= 3 {
             return;
         }
@@ -263,7 +293,8 @@ impl ParticleFilter {
 
         // Rust ist schon was :/ aber holt die beste Zelle in dem sie mit allen anderen vergleichen wird.
         // Das "?" gibt, sollte unwrap throwen, None aus der Funktion zurück
-        let best_cell = grid_weights.iter()
+        let best_cell = grid_weights
+            .iter()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())?;
 
         // Hier könnten die Koordinaten zurückgegeben werden. Claude empfielt aber das hier noch die genau geschaut wird wo in der Zelle sich die Gems am wahrscheinlichsten befinden
@@ -278,7 +309,7 @@ impl ParticleFilter {
 
                 // Wenn die grid positionen der vermuteten Gems in der best_cell sind
                 if (grid_x, grid_y) == *best_cell.0 {
-                    sum_x += gem[0] as f32 * particle.weight; 
+                    sum_x += gem[0] as f32 * particle.weight;
                     sum_y += gem[1] as f32 * particle.weight; // Berechnet den gewichteten Durchschnitt in der Zelle, also wo ist der gem in der Zelle gewichtet am wahrscheinlichsten.
                     total_weight += particle.weight;
                 }
