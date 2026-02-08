@@ -30,8 +30,14 @@ impl SignalSolver {
 
     pub fn update_measurenments(&mut self, target_gem: Pos, radius: f32) {
         for (bot_pos, signal) in &mut self.measurements {
-            *signal -= signal_from_dist(*bot_pos, target_gem, radius).max(0.0);
+            let contrib = signal_from_dist(*bot_pos, target_gem, radius);
+            *signal = (*signal - contrib).max(0.0);
+
         }
+    }
+
+    pub fn clear_measuremnts(&mut self) {
+        self.measurements.clear();
     }
     
     // Berechnet, wie gut eine Gegebene position zu den letzen measurements passt

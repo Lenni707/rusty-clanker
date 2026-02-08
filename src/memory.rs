@@ -115,6 +115,8 @@ impl BotMemory {
 
         if state.signal_level > 0.0 {
             self.signal_solver.add_measurement(state.signal_level, state.bot);
+        } else {
+            self.signal_solver.clear_measuremnts();
         }
         
         // Alle Gems Markieren
@@ -198,21 +200,13 @@ impl BotMemory {
     }
 
     pub fn get_target(&self) -> Option<[i32; 2]> {
-        let curr_tar = match &self.current_target {
-            Some(t) => Some(t.position),
-            None => None,
-        };
-        let curr_sig_tar = match &self.current_signal_target {
-            Some(t) => Some(t),
-            None => None,
-        };
-        if curr_sig_tar.is_none() {
-            if curr_tar.is_none() {
-                return curr_tar;
-            }
-            return curr_tar;
+        // Direktes Target hat Priorität
+        if let Some(cur_target) = self.current_target.as_ref() {
+            return Some(cur_target.position);
         }
-        curr_sig_tar.copied()
+        
+        // Fallback auf Gem-Target
+        self.current_signal_target
     }
 
     pub fn get_best_gem(&self, state: &GameState) -> Option<[i32; 2]> {
