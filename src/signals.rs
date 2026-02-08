@@ -183,7 +183,7 @@ impl SignalSolver {
         }
         
         if let Some((coarse1, coarse2)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2], known_walls, vis_floors, &reachable)
+            self.refine_positions(vec![coarse1, coarse2], vis_floors, &reachable)
                 .map(|v| (v[0], v[1]))
         } else {
             None
@@ -247,7 +247,7 @@ impl SignalSolver {
         }
         
         if let Some((coarse1, coarse2, coarse3)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2, coarse3], known_walls, vis_floors, &reachable)
+            self.refine_positions(vec![coarse1, coarse2, coarse3], vis_floors, &reachable)
                 .map(|v| (v[0], v[1], v[2]))
         } else {
             None
@@ -300,53 +300,58 @@ impl SignalSolver {
     //     Some(positions)
     // }
 
-    fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
-        let mut improved = true;
+    fn refine_positions(&self, mut positions: Vec<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut best_score = self.rate_position(&positions);
         let max_refinement_iterations = 1000;
         let mut iteration = 0;
         
-        while improved && iteration < max_refinement_iterations {
-            improved = false;
+        loop {
+            if iteration >= max_refinement_iterations {
+                break;
+            }
+            
             iteration += 1;
+            let mut any_improvement = false;
             
             for gem_idx in 0..positions.len() {
                 let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
                 let old_pos = positions[gem_idx];
-                let mut best_dir_score = best_score;
-                let mut best_dir_pos = old_pos;
+                let mut local_best_score = best_score;
+                let mut local_best_pos = old_pos;
                 
                 for dir in &directions {
                     let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
                     
-                    if new_pos[0] < 0 || new_pos[0] >= self.width || 
-                    new_pos[1] < 0 || new_pos[1] >= self.height ||
-                    known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) ||
-                    !reachable.contains(&new_pos) {
+                    if vis_floors.contains(&new_pos) || !reachable.contains(&new_pos) { // new_pos[0] < 0 || new_pos[0] >= self.width || new_pos[1] < 0 || new_pos[1] >= self.height || known_walls.contains(&new_pos) || 
                         continue;
                     }
                     
                     positions[gem_idx] = new_pos;
                     let new_score = self.rate_position(&positions);
                     
-                    if new_score > best_dir_score {
-                        best_dir_score = new_score;
-                        best_dir_pos = new_pos;
+                    if new_score >= local_best_score {
+                        local_best_score = new_score;
+                        local_best_pos = new_pos;
                     }
                     
                     positions[gem_idx] = old_pos;
                 }
                 
                 // apply best move
-                if best_dir_pos != old_pos {
-                    positions[gem_idx] = best_dir_pos;
-                    best_score = best_dir_score;
-                    improved = true;
+                if local_best_pos != old_pos {
+                    positions[gem_idx] = local_best_pos;
+                    best_score = local_best_score;  // Update global best
+                    any_improvement = true;
                 }
+            }
+            
+            // Stop if no gem improved in this iteration
+            if !any_improvement {
+                eprintln!("refining stopped after {} iterations with score {:.2}", iteration, best_score);
+                break;
             }
         }
         
-        eprintln!("refiment stopped after {} iterations with score {:.2}", iteration, best_score);
         Some(positions)
     }
 
@@ -413,27 +418,28 @@ impl SignalSolver {
         // try 1 gem
         let gem1 = self.find_single_gem(known_walls, vis_floors)?;
         let score1 = self.rate_position(&[gem1]);
-        eprintln!("1 gem solution: {:?} with score {:.2}", gem1, score1);
         
         // try 2 gems
         let (gem_a, gem_b) = self.find_two_gems(known_walls, vis_floors)?;
         let score2 = self.rate_position(&[gem_a, gem_b]);
-        eprintln!("2 gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
         
         // try 3 gems
         let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
         let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
-        eprintln!("3 gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
         
         // pick the one with the highest score
         if score3 >= score2 && score3 >= score1 {
-            eprintln!("3 gem solution");
-            Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]))
+            eprintln!("3 gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
+            let gem = Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]));
+            eprint!("closest: {:?}", gem);
+            gem
         } else if score2 >= score1 {
-            eprintln!("2 gem solution");
-            Some(self.get_closest_gem(&[gem_a, gem_b]))
+            eprintln!("2 gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
+            let gem = Some(self.get_closest_gem(&[gem_a, gem_b]));
+            eprint!("closest: {:?}", gem);
+            gem
         } else {
-            eprintln!("1 gem solution");
+            eprintln!("1 gem solution: {:?} with score {:.2}", gem1, score1);
             Some(gem1)
         }
     }
