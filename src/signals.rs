@@ -1,4 +1,4 @@
-use crate::helper_func::{Pos, get_dist};
+use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
 use crate::states::GameState;
 
 
@@ -21,22 +21,30 @@ impl SignalSolver {
     pub fn add_measurement(&mut self, signal_level: f32, pos: Pos) {
         self.measurements.push((pos, signal_level));
     }
-    fn predicted_score(&self, gem_pos: &Pos) -> f32 {
+
+    // Berechnet, wie gut eine Gegebene position zu den letzen measurements passt
+    fn rate_position(&self, gem_positions: &[Pos]) -> f32 {
         let mut total_error = 0.0;
+        
         for (bot_pos, signal) in &self.measurements {
             let mut expected_signal = 0.0;
-            expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
+            for gem_pos in gem_positions {
+                expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
+            }
+            let error = (expected_signal - signal).abs();
+            total_error += error;
         }
-        expected_signal
+        
+        1.0 / (0.001 + total_error)
     }
 
-    pub fn find_single_gem() {}
+    pub fn find_single_gem(&self, known_walls: &HashSet<>) {}
 
     pub fn get_target() {}
 }
 
 
 fn signal_from_dist(pos1: Pos, pos2: Pos, radius: f32) -> f32 {
-    let dist = get_dist(a, b, memory)
+    let dist = euclidean(pos1, pos2);
     1.0 / (1.0 + (dist / radius).powf(2.0))
 }
