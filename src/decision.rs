@@ -1,9 +1,9 @@
 use std::{collections::HashSet, i32};
 
-use crate::signal_manager::SignalManager;
-use crate::{explore::*, signal_manager};
-use crate::signals::calc_dist_for_level;
+use crate::{explore::*};
+
 use crate::{memory::BotMemory, states::GameState};
+use crate::signal_manager::*;
 
 use crate::astar::astar;
 use crate::helper_func::*;
@@ -44,42 +44,51 @@ pub fn decide(
     // Wenn jemand mal Lust hat das besser zu machen go for it.
     
     let target = if let Some(t) = memory.get_target() {
-        // Gibt es einen target gem
+        // PRIORITÄT 1: Sichtbares Gem
         highlights.add_point(t, colors::RED);
         t
     } 
-    else if let Some(pos) = memory.signal_manager.get_target() {
-        highlights.add_point(pos, colors::PURPLE);
-        eprintln!("Found Signal Target: {:?}", pos);
-        pos
+    else if let Some(ref sm) = memory.signal_manager {
+        // PRIORITÄT 2: Signal-Target
+        if let Some(pos) = sm.get_target(&memory.known_walls) {
+            highlights.add_point(pos, colors::PURPLE);
+            eprintln!("Found Signal Target: {:?}", pos);
+            pos
+        } else if let Some(pos) = memory.exploration_target {
+            // PRIORITÄT 3: Bestehendes Exploration Target
+            highlights.add_point(pos, colors::GREEN);
+            pos
+        } else if let Some(new_target) = get_exploration_target(state, memory) {
+            // PRIORITÄT 4: Neues Exploration Target
+            memory.exploration_target = Some(new_target);
+            highlights.add_point(new_target, colors::GREEN);
+            new_target
+        } else {
+            eprintln!("Kein Exploration Target gefunden - 404 :/");
+            return movement_fallback(memory, state);
+        }
     } 
     else if let Some(pos) = memory.exploration_target {
-        // gibt es ein exploration target
+        // Kein SignalManager: Exploration Target verwenden
         highlights.add_point(pos, colors::GREEN);
-        // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {
-        //     memory.exploration_target = None;
-        //     return Direction::Wait; // TODO: Hier noch einbauen, das direkt das nächste Ziel verwendet wird
-        // }
         pos
-
     } else if let Some(new_target) = get_exploration_target(state, memory) {
-        // if no exploration target, pick new target
+        // Neues Exploration Target finden
         memory.exploration_target = Some(new_target);
         highlights.add_point(new_target, colors::GREEN);
         new_target
     } else {
-        // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
         return movement_fallback(memory, state);
     };
 
-    if state.signal_level > 0.1 {
-        highlights.draw_circle(
-            state.bot,
-            calc_dist_for_level(state.signal_level, memory.config.signal_radius) as i32,
-            colors::BLUE,
-        );
-    }
+    // if state.signal_level > 0.1 {
+    //     highlights.draw_circle(
+    //         state.bot,
+    //         calc_dist_for_level(state.signal_level, memory.config.signal_radius) as i32,
+    //         colors::BLUE,
+    //     );
+    // }
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
 
@@ -114,9 +123,11 @@ pub fn decide(
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
                 colors::RED
-            } else if memory.signal_manager.get_target().is_some() {
-                colors::PURPLE
-            } else {
+            } 
+            // else if memory.signal_manager.get_target().is_some() {
+            //     colors::PURPLE
+            // } 
+            else {
                 colors::GREEN
             };
             highlights.add_path(path, path_color);

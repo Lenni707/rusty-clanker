@@ -6,7 +6,7 @@ mod explore;
 mod helper_func;
 mod highlights;
 mod memory;
-mod signals;
+mod signals_solver;
 mod signal_manager;
 mod states;
 
@@ -17,7 +17,6 @@ use crate::memory::BotMemory;
 
 use crate::highlights::Highlighter;
 
-use crate::signal_manager::SignalManager;
 
 fn main() {
     eprint!("A small step for the bot, but a giant leap for the developers");

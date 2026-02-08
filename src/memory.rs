@@ -1,9 +1,9 @@
+use crate::signal_manager::SignalManager;
 use crate::states::GameState;
 use std::collections::VecDeque; // iwie effiezient oder so ka
 use std::collections::{BTreeMap, HashSet};
 
 use crate::helper_func::{Pos, get_dist};
-use crate::signal_manager::SignalManager;
 
 
 pub struct BotMemory {
@@ -20,7 +20,7 @@ pub struct BotMemory {
     pub last_pos: Option<Pos>,
     pub recent_positions: VecDeque<Pos>,
 
-    pub signal_manager: SignalManager,
+    pub signal_manager: Option<SignalManager>, // NEU: Option, da erst nach Config initialisiert
 }
 
 pub struct Config {
@@ -96,29 +96,31 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal_manager: SignalManager::new(0, 0, 0.0), // Dummy Werte. 
             // Hier werden nur Nullen verwendet, da die width und height in mem selbst gespeichert sind. 
-            // Signal manager wird beim ersten update mit richtigen Werden geändert. 
+            // Signal manager wird beim ersten update mit richtigen Werden geändert.
+            signal_manager: None, 
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
-        // Initialisieren des SignalManagers, muss hier sein da der Signal manager konstruktor BotMemory braucht
-        // if state.tick == 0 {
-        //     eprintln!("Should init");
-        //     self.signal_manager.initialize_sig_man(&self.known_walls, &state.floor);
-        //     self.signal_manager = SignalManager::new(
-        //         self.config.width, 
-        //         self.config.height, 
-        //         self.config.signal_radius
-        //     );
-        //     self.signal_manager.intitialized = true;
-        // }
-
-        // Die aktuelle Messung in den Signalmanager eintragen
-        if state.signal_level > 0.0 {
-            self.signal_manager.add_measurement(state.bot, state.signal_level, &self.known_walls, &state.floor);
+        // Initialisiere SignalManager, sobald Config verfügbar ist
+        if self.signal_manager.is_none() && self.config.width > 0 {
+            self.signal_manager = Some(SignalManager::new(
+                self.config.width,
+                self.config.height,
+                self.config.signal_radius,
+            ));
+            eprintln!("SignalManager initialized: {}x{}, radius: {}", 
+                self.config.width, self.config.height, self.config.signal_radius);
         }
+
+        // Signal-Messung hinzufügen
+        if state.signal_level > 0.0 {
+            if let Some(ref mut sm) = self.signal_manager {
+                sm.add_measurement(state.bot, state.signal_level, &self.known_walls, &state.floor);
+            }
+        }
+        
         // Alle Gems Markieren
         for gem in &state.visible_gems {
             // Gems spawns in die Heatmap eintragen,
