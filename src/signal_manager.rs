@@ -40,7 +40,7 @@ impl SignalManager {
         }
 
         // Update den Filter mit neuen Inforamtionen
-        self.filter.update(bot_pos, signal, );
+        self.filter.update(bot_pos, signal);
 
         // Resample, checking effective sample size
         // Das kommt noch, haben wir nicht implementiert. Deswegen TODO:
