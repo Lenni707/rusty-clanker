@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
-use std::collections::VecDeque; // iwie effiezient oder so ka
+use std::collections::VecDeque; use crate::astar::{self, astar};
+use crate::explore::has_line_of_sight;
+// iwie effiezient oder so ka
 use crate::states::GameState;
 
 use crate::helper_func::{get_dist, Pos};
@@ -22,7 +24,8 @@ pub struct BotMemory {
     pub signal_solver: SignalSolver,
 
     pub signal: SignalStats,
-    pub signal_target: Option<Pos>
+    pub signal_target: Option<Pos>,
+    pub last_signal_targets: Vec<Pos>,
 }
 
 pub struct Config {
@@ -100,6 +103,7 @@ impl BotMemory {
 
             signal: SignalStats::new(),
             signal_target: None,
+            last_signal_targets: Vec::new(),
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -178,17 +182,14 @@ impl BotMemory {
             self.exploration_target = None;
             // Checks für curr target
             let reached = &state.bot == target;
-            let mut vivsible = false;
-            for gem in state.visible_gems.iter() {
-                if &gem.position == target {
-                    vivsible = true;
-                    break;
-                }
+            let mut visible = false;
+            if has_line_of_sight(state.bot, *target, &self.known_walls, self.config.vis_radius) {
+                visible = true;
             }
-            if reached || (!vivsible && state.floor.contains(&target)) {
+            if reached || (!visible && state.floor.contains(&target)) {
                 // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.signal_target = None;
-                eprintln!("Target not there, {} {}", state.tick, vivsible)
+                eprintln!("Target not there, {} {}", state.tick, visible)
             }
         }
 
@@ -224,7 +225,11 @@ impl BotMemory {
         
         None
     }
-    pub fn get_signal_target(&self) -> Option<Pos> {
+    pub fn get_signal_target(&mut self, bot_pos: Pos) -> Option<Pos> {
+        if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
+            self.signal_target = None;
+            return None;
+        }
         match &self.signal_target {
             Some(t) => Some(*t),
             None => None,

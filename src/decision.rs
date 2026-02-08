@@ -50,13 +50,23 @@ pub fn decide(
         memory.signal.ticks_since_signal_up = 0;
         t
     }
-    else if let Some(t) = memory.get_signal_target() {
+    else if let Some(t) = memory.get_signal_target(state.bot) {
         highlights.add_point(t, colors::BLUE);
         t
     }
     else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
         highlights.add_point(pos, colors::PURPLE);
-        memory.signal_target = Some(pos);
+        // Check ob das Target Konstant ist:
+        memory.last_signal_targets.push(pos);
+        if memory.last_signal_targets.len() > 2 {
+            memory.last_signal_targets.remove(0);
+        }
+        if memory.last_signal_targets.len() == 2 {
+            let all_same = memory.last_signal_targets.iter().all(|&t| t == pos);
+            if all_same {
+                memory.signal_target = Some(pos);
+            }
+        }
         pos
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
