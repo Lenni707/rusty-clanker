@@ -4,7 +4,6 @@ use std::{
     i32,
 };
 
-use crate::signal::move_to_signal;
 use crate::{memory::BotMemory, states::GameState};
 use crate::explore::*;
 
@@ -44,12 +43,36 @@ pub fn decide(
     highlights: &mut Highlighter
 ) -> Direction {
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
+        // memory.signal_solver.update_measurenments(t, memory.config.signal_radius);
+        memory.signal_solver.clear_measuremnts();
         highlights.add_point(t, colors::RED);
-        memory.signal_target = None;
+        memory.signal.signal_target = None;
+        memory.signal.ticks_since_signal_up = 0;
         t
     }
-    else if state.signal_level != 0.0 {
-        move_to_signal(memory, state)
+    else if let Some(t) = memory.get_signal_target(state.bot) {
+        highlights.add_point(t, colors::BLUE);
+        t
+    }
+    else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
+        if astar(state.bot, pos, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
+            // Target not rachable
+            eprintln!("TARGET NOT REACHABLE");
+            return movement_fallback(memory, state, Some(pos)); // changes the target until it is reachable
+        }
+        highlights.add_point(pos, colors::PURPLE);
+        // Check ob das Target Konstant ist:
+        memory.last_signal_targets.push(pos);
+        if memory.last_signal_targets.len() > 2 {
+            memory.last_signal_targets.remove(0);
+        }
+        if memory.last_signal_targets.len() == 2 {
+            let all_same = memory.last_signal_targets.iter().all(|&t| t == pos);
+            if all_same {
+                memory.signal_target = Some(pos);
+            }
+        }
+        pos
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
@@ -66,7 +89,7 @@ pub fn decide(
     } 
     else { // if picking new target also failed, revert to movement fallback
         eprintln!("Kein Exploration Target gefunden - 404 :/");
-        return movement_fallback(memory, state);
+        return movement_fallback(memory, state, None);
     };
 
     let mut walls: HashSet<[i32; 2]> = memory.known_walls.clone();
@@ -102,6 +125,8 @@ pub fn decide(
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
                 colors::RED
+            } else if memory.signal_target.is_some() {
+                colors::BLUE
             } else {
                 colors::GREEN
             };
@@ -115,18 +140,19 @@ pub fn decide(
                 (0, -1) => Direction::Up, // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
-                    return movement_fallback(&memory, state);
+                    return movement_fallback(&memory, state, None);
                 }
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
+            memory.signal.signal_target = None; 
             // Ziel wurde erreicht
-            return movement_fallback(&memory, state);
+            return movement_fallback(&memory, state, None);
         }
     }
 
     memory.exploration_target = None;
-    memory.signal_target = None; 
+    memory.signal.signal_target = None; 
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {
@@ -143,19 +169,63 @@ pub fn decide(
     Direction::Wait
 }
 
-fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
+fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Option<Pos>) -> Direction {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
-    // TODO: Das throwt jedes mal mein got
+    
     let width = memory.config.width;
     let height = memory.config.height;
-    let center = [width / 2, height / 2];
     let current = state.bot;
     
-    // Richtung zur Mitte
+    // If we have an original target, try to find a reachable position near it
+    if let Some(target) = original_target {
+        eprintln!("trying to find new reachable pos {:?}", target);
+        
+        // search in expanding radius around the original target
+        for radius in 1..=10 {
+            let offsets = get_positions_at_radius(radius);
+            
+            for offset in offsets {
+                let candidate = [target[0] + offset[0], target[1] + offset[1]];
+                
+                // Check if candidate is valid
+                if candidate[0] < 0 || candidate[0] >= width || 
+                   candidate[1] < 0 || candidate[1] >= height {
+                    continue;
+                }
+                
+                if memory.known_walls.contains(&candidate) {
+                    continue;
+                }
+                
+                // path to this canidate
+                if let Some(path) = astar(current, candidate, &memory.known_walls, width, height) {
+                    eprintln!("reachable {:?} (is offeseted {})", candidate, radius);
+                    
+                    if path.len() > 1 {
+                        let next_step = path[1];
+                        let dx = next_step[0] - current[0];
+                        let dy = next_step[1] - current[1];
+                        
+                        return match (dx, dy) {
+                            (1, 0) => Direction::Right,
+                            (-1, 0) => Direction::Left,
+                            (0, 1) => Direction::Down,
+                            (0, -1) => Direction::Up,
+                            _ => Direction::Wait,
+                        };
+                    }
+                }
+            }
+        }
+        
+        eprintln!("no reachable near target");
+    }
+    
+    // Fallback: move towards center
+    let center = [width / 2, height / 2];
     let dx = center[0] - current[0];
     let dy = center[1] - current[1];
     
-    // Priorisierte Richtungen basierend auf Distanz zur Mitte
     let preferred_directions = if dx.abs() > dy.abs() {
         if dx > 0 {
             vec![Direction::Right, Direction::Down, Direction::Up, Direction::Left]
@@ -170,7 +240,6 @@ fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
         }
     };
     
-    // Finde erste gültige Richtung aus den priorisierten
     for dir in preferred_directions {
         let next_pos = match dir {
             Direction::Right => [current[0] + 1, current[1]],
@@ -186,5 +255,21 @@ fn movement_fallback(memory: &BotMemory, state: &GameState) -> Direction {
         }
     }
     
-    Direction::Wait // Wenn alle Richtungen blockiert sind
+    Direction::Wait
+}
+
+fn get_positions_at_radius(radius: i32) -> Vec<[i32; 2]> {
+    let mut positions = Vec::new();
+    
+    for dx in -radius..=radius {
+        let remaining = radius - dx.abs();
+        if remaining == 0 {
+            positions.push([dx, 0]);
+        } else {
+            positions.push([dx, remaining]);
+            positions.push([dx, -remaining]);
+        }
+    }
+    
+    positions
 }

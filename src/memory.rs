@@ -1,8 +1,11 @@
 use std::collections::{BTreeMap, HashSet};
-use std::collections::VecDeque; // iwie effiezient oder so ka
+use std::collections::VecDeque; use crate::astar::{self, astar};
+use crate::explore::has_line_of_sight;
+// iwie effiezient oder so ka
 use crate::states::GameState;
 
 use crate::helper_func::{get_dist, Pos};
+use crate::signals::{self, SignalSolver};
 
 pub struct BotMemory {
     pub config: Config,
@@ -11,14 +14,18 @@ pub struct BotMemory {
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
+    pub known_floors: HashSet<[i32; 2]>, // Das ist nur fürs einfacheren arbeiten, anstatt mit known_positions
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
 
-    pub signal_target: Option<Pos>,
-    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
     pub last_pos: Option<Pos>,
-    pub last_signal: Option<f32>,
     pub recent_positions: VecDeque<Pos>,
+
+    pub signal_solver: SignalSolver,
+
+    pub signal: SignalStats,
+    pub signal_target: Option<Pos>,
+    pub last_signal_targets: Vec<Pos>,
 }
 
 pub struct Config {
@@ -28,6 +35,14 @@ pub struct Config {
     pub max_ticks: u32,
     pub gem_ttl: u32,
     pub signal_radius: f32,
+}
+
+pub struct SignalStats {
+    pub signal_target: Option<Pos>,
+    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
+    pub last_signal: Option<f32>,
+    pub ticks_since_signal_up: i32,
+    pub best_signal: f32,
 }
 
 #[derive(Debug, PartialEq)]
@@ -56,6 +71,18 @@ impl Config {
     }
 }
 
+impl SignalStats {
+    fn new() -> Self {
+        SignalStats {
+            signal_target: None,
+            gem_signal_map: BTreeMap::new(),
+            last_signal: None,
+            ticks_since_signal_up: 0,
+            best_signal: 0.0,
+        }
+    }
+}
+
 impl BotMemory {
     pub fn new() -> Self {
         BotMemory {
@@ -65,18 +92,38 @@ impl BotMemory {
             known_gems: BTreeMap::new(),
             known_positions: BTreeMap::new(),
             known_walls: HashSet::new(),
+            known_floors: HashSet::new(),
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
 
-            signal_target: None,
-            gem_signal_map: BTreeMap::new(),
             last_pos: None,
-            last_signal: None,
-            recent_positions: VecDeque::new()
+            recent_positions: VecDeque::new(),
+
+            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6]), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+
+            signal: SignalStats::new(),
+            signal_target: None,
+            last_signal_targets: Vec::new(),
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
+        // Signal Solver Intitialisieren, sobald die config verfügbar ist
+        if state.tick == 1 && self.config.width > 0 {
+            self.signal_solver = SignalSolver::new(
+                self.config.width, 
+                self.config.height, 
+                self.config.signal_radius,
+                [0, 0] // mock value fuck borrow checker
+            );
+        }
+
+        self.signal_solver.bot_pos = state.bot;
+
+        if state.signal_level > 0.0 {
+            self.signal_solver.add_measurement(state.signal_level, state.bot);
+        }
+        
         // Alle Gems Markieren
         for gem in &state.visible_gems {
             // Gems spawns in die Heatmap eintragen,
@@ -92,7 +139,6 @@ impl BotMemory {
         }
 
         // add signal from this field to BTreeMap of all known tiles with a signal
-        self.gem_signal_map.insert(state.bot, state.signal_level);
         
         // Alle Sichbaren Positionen markieren
         // let vis_radius = 5; // Positionen, welche nah an dem Bot sind werden als erkundet gezählt.
@@ -104,6 +150,7 @@ impl BotMemory {
                     vis_floor_count: state.floor.len(),
                 },
             );
+            self.known_floors.insert(*floor_pos); // goofy ik ik
         }
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
@@ -132,6 +179,22 @@ impl BotMemory {
                 eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
+        // Signal Target Check; Wurde es erreicht?
+        if let Some(target) = &self.signal_target {
+            // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
+            self.exploration_target = None;
+            // Checks für curr target
+            let reached = &state.bot == target;
+            let mut visible = false;
+            if has_line_of_sight(state.bot, *target, &self.known_walls, self.config.vis_radius) {
+                visible = true;
+            }
+            if reached || (!visible && state.floor.contains(&target)) {
+                // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
+                self.signal_target = None;
+                eprintln!("Target not there, {} {}", state.tick, visible)
+            }
+        }
 
         // Exploratin Check: Wurde das Ziel erreicht?
         if let Some(explore_pos) = self.exploration_target {
@@ -158,8 +221,22 @@ impl BotMemory {
     }
 
     pub fn get_target(&self) -> Option<[i32; 2]> {
-        match &self.current_target {
-            Some(gem) => Some(gem.position),
+        // Gem-Target hat Priorität
+        if let Some(target) = &self.current_target {
+            return Some(target.position);
+        }
+        
+        None
+    }
+    pub fn get_signal_target(&mut self, bot_pos: Pos) -> Option<Pos> {
+        if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
+            self.signal_target = None;
+            self.last_signal_targets.clear();
+            eprintln!("No way found, reseting signal_taret");
+            return None;
+        }
+        match &self.signal_target {
+            Some(t) => Some(*t),
             None => None,
         }
     }

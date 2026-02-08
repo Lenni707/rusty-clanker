@@ -137,6 +137,7 @@ pub fn should_abort_exploration(
     let tiles_at_target = get_visible_tiles_from_pos(
         target, 
         &memory.known_walls, 
+        &memory.known_floors,
         vis_range, 
         memory.config.width, 
         memory.config.height
@@ -144,7 +145,8 @@ pub fn should_abort_exploration(
 
     let tiles_now = get_visible_tiles_from_pos(
         state.bot, 
-        &memory.known_walls, 
+        &memory.known_walls,
+        &memory.known_floors,
         vis_range, 
         memory.config.width, 
         memory.config.height,
@@ -152,7 +154,7 @@ pub fn should_abort_exploration(
 
     let mut new_counter = 0;
     for tile in tiles_at_target {
-        let not_yet_visible = tiles_now.contains(&tile);
+        let not_yet_visible = !tiles_now.contains(&tile);
         if not_yet_visible {
             new_counter += 1;
         }
@@ -169,6 +171,7 @@ pub fn should_abort_exploration(
 pub fn get_visible_tiles_from_pos(
     pos: [i32; 2],
     known_walls: &HashSet<[i32; 2]>,
+    known_floors: &HashSet<[i32; 2]>,
     vis_range: i32,
     width: i32,
     height: i32
@@ -179,7 +182,10 @@ pub fn get_visible_tiles_from_pos(
         for dy in -vis_range..=vis_range {
             let check_pos = [pos[0] + dx, pos[1] + dy];
 
-            if !is_in_bounds(pos, width, height) {
+            if !is_in_bounds(check_pos, width, height) {
+                continue;
+            }
+            if !known_floors.contains(&check_pos) {
                 continue;
             }
 
@@ -201,7 +207,7 @@ pub fn has_line_of_sight(
     walls: &HashSet<[i32; 2]>,
     vis_range: i32
 ) -> bool {
-    // TODO: Ein richtiges Line of Sight hier einbauen, erstmal tue ich so, als ob alles in meiner vis - 1 gesehn wird
+    // Holt alle Felder anhand der 
     // https://www.redblobgames.com/articles/visibility/ das ist gut
     let dist = heuristic(from, to);
 
@@ -214,8 +220,8 @@ pub fn has_line_of_sight(
         return true;
     }
 
-    let dx = from[0] + to[0];
-    let dy = from[1] + to[1];
+    let dx = from[0] - to[0];
+    let dy = from[1] - to[1];
 
     // Anzahl der Schritte = Maximalen Koordanatendifferenz
     let steps = dx.abs().max(dy.abs());
