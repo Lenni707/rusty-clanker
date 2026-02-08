@@ -43,6 +43,7 @@ pub fn decide(
     highlights: &mut Highlighter
 ) -> Direction {
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
+        memory.signal_solver.update_measurenments(t, memory.config.signal_radius);
         highlights.add_point(t, colors::RED);
         memory.signal.signal_target = None;
         memory.signal.ticks_since_signal_up = 0;
