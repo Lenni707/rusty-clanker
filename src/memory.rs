@@ -179,6 +179,7 @@ impl BotMemory {
             }
         }
         // Signal Target Check; Wurde es erreicht?
+        let mut change_sig_target = false;
         if let Some(target) = &self.signal_target {
             // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
             self.exploration_target = None;
@@ -190,8 +191,26 @@ impl BotMemory {
             }
             if reached || (!visible && state.floor.contains(&target)) {
                 // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
-                self.signal_target = None;
+                change_sig_target = true;
             }
+            // Auch wenn der andere Bot näher ist:
+            if let Some(enemy_bots) = &state.visible_bots {
+                for bot in enemy_bots {
+                    // Wenn gegnerischer Bot gem sehen kann
+                    if has_line_of_sight(bot.position, *target, &self.known_walls, self.config.vis_radius) {
+                        if let Some(enemy_path) = astar(bot.position, *target, &self.known_walls, self.config.width, self.config.height) {
+                            if let  Some(own_path) = astar(state.bot, *target, &self.known_walls, self.config.width, self.config.height) {
+                                if enemy_path.len() + 2 < own_path.len() {
+                                    change_sig_target = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if change_sig_target {
+            self.signal_target = None;
         }
 
         // Exploratin Check: Wurde das Ziel erreicht?

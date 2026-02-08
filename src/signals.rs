@@ -168,7 +168,7 @@ impl SignalSolver {
                             continue;
                         }
 
-                        if !reachable.contains(&pos1) {
+                        if !reachable.contains(&pos2) {
                             continue;
                         }       
                         
@@ -219,7 +219,7 @@ impl SignalSolver {
                             continue;
                         }
 
-                        if !reachable.contains(&pos1) {
+                        if !reachable.contains(&pos2) {
                             continue;
                         }   
                         
@@ -230,7 +230,7 @@ impl SignalSolver {
                                     continue;
                                 }
 
-                                if !reachable.contains(&pos1) {
+                                if !reachable.contains(&pos3) {
                                     continue;
                                 }   
                                 
