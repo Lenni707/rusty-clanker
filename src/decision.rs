@@ -110,6 +110,8 @@ pub fn decide(
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
                 colors::RED
+            } else if memory.signal_target.is_some() {
+                colors::BLUE
             } else {
                 colors::GREEN
             };
