@@ -259,7 +259,7 @@ impl SignalSolver {
     fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut improved = true;
         let mut best_score = self.rate_position(&positions);
-        let max_refinement_iterations = 100; // Prevent infinite loops
+        let max_refinement_iterations = 200; 
         let mut iteration = 0;
         
         while improved && iteration < max_refinement_iterations {
