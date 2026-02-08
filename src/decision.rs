@@ -48,6 +48,10 @@ pub fn decide(
         memory.signal.ticks_since_signal_up = 0;
         t
     }
+    else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
+        highlights.add_point(pos, colors::PURPLE);
+        pos
+    }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
         // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {

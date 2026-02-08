@@ -3,6 +3,7 @@ use std::collections::VecDeque; // iwie effiezient oder so ka
 use crate::states::GameState;
 
 use crate::helper_func::{get_dist, Pos};
+use crate::signals::SignalSolver;
 
 pub struct BotMemory {
     pub config: Config,
@@ -17,6 +18,8 @@ pub struct BotMemory {
 
     pub last_pos: Option<Pos>,
     pub recent_positions: VecDeque<Pos>,
+
+    pub signal_solver: SignalSolver,
 
     pub signal: SignalStats,
 }
@@ -92,11 +95,26 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
+            signal_solver: SignalSolver::new(49, 29, 5.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+
             signal: SignalStats::new()
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
+        // Signal Solver Intitialisieren, sobald die config verfügbar ist
+        if state.tick == 1 && self.config.width > 0 {
+            self.signal_solver = SignalSolver::new(
+                self.config.width, 
+                self.config.height, 
+                self.config.signal_radius
+            );
+        }
+
+        if state.signal_level > 0.0 {
+            self.signal_solver.add_measurement(state.signal_level, state.bot);
+        }
+        
         // Alle Gems Markieren
         for gem in &state.visible_gems {
             // Gems spawns in die Heatmap eintragen,

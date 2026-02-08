@@ -1,6 +1,8 @@
 use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
+use crate::memory::BotMemory;
 use crate::states::GameState;
 
+use std::collections::{HashMap, HashSet};
 
 pub struct SignalSolver {
     measurements: Vec<(Pos, f32)>,
@@ -38,10 +40,78 @@ impl SignalSolver {
         1.0 / (0.001 + total_error)
     }
 
-    pub fn find_single_gem(&self, known_walls: &HashSet<>) {}
+    pub fn find_single_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+        if self.measurements.is_empty() {
+            return None;
+        }
 
-    pub fn get_target() {}
+        let mut best_score = 0.0;
+        let mut best_pos = None;
+
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let pos = [x, y];
+
+                if known_walls.contains(&pos) || vis_floors.contains(&pos) {
+                    continue;
+                }
+
+                let score = self.rate_position(&[pos]);
+
+                if score > best_score {
+                    best_score = score;
+                    best_pos = Some(pos);
+                }
+            }
+        }
+        
+        best_pos
+    }
+    pub fn find_three_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+        if self.measurements.is_empty() {
+            return None;
+        }
+
+        let mut best_score = 0.0;
+        let mut best_pos = None;
+
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let pos = [x, y];
+
+                if known_walls.contains(&pos) || vis_floors.contains(&pos) {
+                    continue;
+                }
+
+                let score = self.rate_position(&[pos]);
+
+                if score > best_score {
+                    best_score = score;
+                    best_pos = Some(pos);
+                }
+            }
+        }
+        
+        best_pos
+    }
+    
+    pub fn get_aproximate_gem_amount(last_signal: f32, current_signal: f32, mem: &mut BotMemory) { // TODO: kein hardcoded amount, sondern richtig
+        let signal_change = current_signal - last_signal;
+        if signal_change <= -0.2 {
+            mem.signal_count -= 1;
+        } else if signal_change >= 0.2 {
+            mem.signal_count += 1;
+        }
+    }
+
+    pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+        let gem = self.find_single_gem(known_walls, vis_floors)?;
+        let score = self.rate_position(&[gem]);
+        eprintln!("Found gem at {:?} with score {}", gem, score);
+        Some(gem)
+    }
 }
+
 
 
 fn signal_from_dist(pos1: Pos, pos2: Pos, radius: f32) -> f32 {
