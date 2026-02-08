@@ -191,7 +191,7 @@ impl BotMemory {
                 eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
-        
+
         // Exploratin Check: Wurde das Ziel erreicht?
         if let Some(explore_pos) = self.exploration_target {
             // Ist das Target erreicht?
@@ -225,7 +225,10 @@ impl BotMemory {
         None
     }
     pub fn get_signal_target(&self) -> Option<Pos> {
-        None
+        match &self.signal_target {
+            Some(t) => Some(*t),
+            None => None,
+        }
     }
 
     pub fn get_best_gem(&self, state: &GameState) -> Option<[i32; 2]> {
