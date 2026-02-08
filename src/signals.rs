@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::helper_func::{Pos, heuristic};
+use crate::helper_func::{Pos, euclidean, heuristic};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -374,6 +374,6 @@ pub fn calc_dist_for_level(signal: f32, radius: f32) -> f32 {
 }
 
 pub fn signal_from_dist(pos1: Pos, pos2: Pos, radius: f32) -> f32 {
-    let dist = heuristic(pos1, pos2);
-    1.0 / (1. + (dist as f32 / radius).powf(2.))
+    let dist = euclidean(pos1, pos2);
+    1.0 / (1. + (dist / radius).powf(2.))
 }
