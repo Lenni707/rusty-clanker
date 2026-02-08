@@ -116,10 +116,19 @@ impl SignalSolver {
         }
         best_pos
     }
+
+    // pub fn find_3_gems 
     
     pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
         let gem = self.find_single_gem(known_walls, vis_floors)?;
         let score = self.rate_position(&[gem]);
+        if score < 500.0 {
+            let gems = self.find_two_gems(known_walls, vis_floors)?;
+            
+            let score = self.rate_position(&[gems.0, gems.1]);
+
+            return Some(gems.0);
+        }
         eprintln!("Found gem at {:?} with score {}", gem, score);
         Some(gem)
     }
