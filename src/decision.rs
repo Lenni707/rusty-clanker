@@ -50,8 +50,13 @@ pub fn decide(
         memory.signal.ticks_since_signal_up = 0;
         t
     }
+    else if let Some(t) = memory.get_signal_target() {
+        highlights.add_point(t, colors::BLUE);
+        t
+    }
     else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
         highlights.add_point(pos, colors::PURPLE);
+        memory.signal_target = Some(pos);
         pos
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target

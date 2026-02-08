@@ -22,6 +22,7 @@ pub struct BotMemory {
     pub signal_solver: SignalSolver,
 
     pub signal: SignalStats,
+    pub signal_target: Option<Pos>
 }
 
 pub struct Config {
@@ -98,6 +99,7 @@ impl BotMemory {
             signal_solver: SignalSolver::new(49, 29, 5.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
 
             signal: SignalStats::new(),
+            signal_target: None,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -170,7 +172,26 @@ impl BotMemory {
                 eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
-
+        // Signal Target Check; Wurde es erreicht?
+        if let Some(target) = &self.signal_target {
+            // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
+            self.exploration_target = None;
+            // Checks für curr target
+            let reached = &state.bot == target;
+            let mut vivsible = false;
+            for gem in state.visible_gems.iter() {
+                if &gem.position == target {
+                    vivsible = true;
+                    break;
+                }
+            }
+            if reached || (!vivsible && state.floor.contains(&target)) {
+                // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
+                self.signal_target = None;
+                eprintln!("Target not there, {} {}", state.tick, vivsible)
+            }
+        }
+        
         // Exploratin Check: Wurde das Ziel erreicht?
         if let Some(explore_pos) = self.exploration_target {
             // Ist das Target erreicht?
@@ -201,6 +222,9 @@ impl BotMemory {
             return Some(target.position);
         }
         
+        None
+    }
+    pub fn get_signal_target(&self) -> Option<Pos> {
         None
     }
 
