@@ -62,11 +62,10 @@ fn main() {
 
         memory.update(&state);
 
-        let signal_manager = SignalManager::new(&memory);
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
 
-        let dir = decide(&state, &mut memory, &mut highlights, &signal_manager);
+        let dir = decide(&state, &mut memory, &mut highlights);
 
         memory.last_pos = Some(state.bot); // get last pos
 

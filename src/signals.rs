@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::helper_func::{Pos, heuristic};
 use crate::memory::BotMemory;
@@ -38,13 +38,14 @@ fn gen_random_free_pos(state: &GameState, mem: &BotMemory, rng: &mut StdRng) -> 
 }
 
 pub struct ParticleFilter {
-    particles: Vec<Particle>,    // Vec aus Hypothesen
+    pub particles: Vec<Particle>,    // Vec aus Hypothesen
     num_particles: usize,        // wv Partikel
     rng: StdRng,                 // für rng basierend auf dem seed
     jitter_config: JitterConfig, // Erklärung steht bei der implementierung
     width: i32, // Fuck you wenn du sagst das das ineffizient ist weißt du durch wie viele Funktionen in memory durchgeben müsste??
     height: i32, // Das ist jetzt so wenn du damit ein Problem hast dann ist das jetzt wohl so
     free_pos: Vec<Pos>, // Das geht doch sonst nicht für echt, ich speichere die hier damit ich nicht jedes mal ganz BotMen und State übergeben muss
+    signal_radius: f32,
 }
 
 impl ParticleFilter {
@@ -52,37 +53,55 @@ impl ParticleFilter {
     pub fn new(
         num_particles: usize, // wv Partikel
         seed: u64,
-        mem: &BotMemory,
+        width: i32,
+        height: i32,
+        signal_radius: f32,
     ) -> Self {
         ParticleFilter {
             particles: Vec::new(),
             num_particles,
             rng: StdRng::seed_from_u64(seed),
             jitter_config: JitterConfig::default(),
-            width: mem.config.width,
-            height: mem.config.height,
+            width: width,
+            height: height,
             free_pos: Vec::new(),
+            signal_radius: signal_radius,
         }
     }
     // Alle free_pos speichern
-    fn save_free_pos(&mut self, state: &GameState, mem: &BotMemory, rng: &mut StdRng) {
-        let mut free_pos: Vec<Pos> = Vec::new();
-        loop {
-            let pos = [
-                rng.gen_range(0..mem.config.width),
-                rng.gen_range(0..mem.config.height),
-            ];
-            if !state.floor.contains(&pos) && !mem.known_walls.contains(&pos) {
-                free_pos.push(pos);
+    pub fn save_free_pos(&mut self, known_walls: &HashSet<Pos>, known_floor: &HashSet<Pos>, vis_floor: &Vec<Pos>) {
+        self.free_pos.clear();
+        let max_attempts = 500;
+        let target_count = 50;
+        
+        for _ in 0..max_attempts {
+            if self.free_pos.len() >= target_count {
+                break;
             }
-            if free_pos.len() > 5 {
-                return;
+            
+            // Guard gegen width/height = 0
+            if self.width <= 0 || self.height <= 0 {
+                eprintln!("Invalid config dimensions!");
+                break;
+            }
+            
+            let pos = [
+                self.rng.gen_range(0..self.width),
+                self.rng.gen_range(0..self.height),
+            ];
+            
+            if !vis_floor.contains(&pos) 
+                && !known_walls.contains(&pos) 
+                && !self.free_pos.contains(&pos) 
+            {
+                self.free_pos.push(pos);
             }
         }
     }
     // Intitialize particles with random gam configuration
-    pub fn initialize(&mut self, state: &GameState, mem: &BotMemory) {
+    pub fn initialize(&mut self, known_walls: &HashSet<Pos>, known_floor: &HashSet<Pos>, vis_floor: &Vec<Pos>) {
         self.particles.clear();
+        self.save_free_pos(known_walls, known_floor, vis_floor);
 
         for _ in 0..self.num_particles {
             let num_gems = self.rng.gen_range(1..=3); // Zufällinge anzahl an gems, von 1 bis einschließlich 3
@@ -93,7 +112,7 @@ impl ParticleFilter {
 
             for _ in 0..num_gems {
                 // Zufällinge Positionen für die guesses
-                let guessed_pos = gen_random_free_pos(state, mem, &mut self.rng);
+                let guessed_pos = self.free_pos[self.rng.gen_range(0..self.free_pos.len())]; // ik im sorry
 
                 gems.push(guessed_pos);
             }
@@ -106,13 +125,13 @@ impl ParticleFilter {
     }
 
     // Bewertet die Partikel anhand der Messungen
-    pub fn update(&mut self, bot_pos: [i32; 2], observed_signal: f32, mem: &BotMemory) {
+    pub fn update(&mut self, bot_pos: [i32; 2], observed_signal: f32) {
         let mut total_weight = 0.0;
 
         // Für jeden Partikel
         for particle in &mut self.particles {
             // Was würde ich in der angenommenen Welt messen
-            let expected = particle.get_signal_sum(bot_pos, mem.config.signal_radius);
+            let expected = particle.get_signal_sum(bot_pos, self.signal_radius);
 
             // Wie gut ist das erwartete im Vergleich zum echten Ergebnis?
             let diff = (expected - observed_signal).abs();
@@ -136,6 +155,10 @@ impl ParticleFilter {
     }
 
     pub fn resample(&mut self) {
+        if self.particles.is_empty() {
+            return;
+        }
+
         let mut new_particles = Vec::new();
         
         // Systematic Resampling (effizienter als naive Methode)
@@ -154,7 +177,7 @@ impl ParticleFilter {
         for i in 0..self.num_particles {
             let target = start + i as f32 * step;
             
-            while idx < cumulative.len() - 1 && cumulative[idx] < target { // only pushes good wheighing particles
+            while idx < cumulative.len() - 1 && cumulative[idx] < target { // only pushes good wheighing particles // index out of bounds
                 idx += 1;
             }
             
@@ -226,6 +249,11 @@ impl ParticleFilter {
             return;
         }
 
+        if free_pos.is_empty() {
+            eprintln!("Warning: No free positions available for add_random_gem");
+            return;
+        }
+
         let free_pos = free_pos[rng.gen_range(0..free_pos.len())]; // OMG ES TUT MIR LEID WAS IST DAS?
 
         particle.gem_positions.push(free_pos);
@@ -244,6 +272,7 @@ impl ParticleFilter {
     //==========================================================================
     pub fn get_best_gem_estimate(&self) -> Option<Pos> {
         if self.particles.is_empty() {
+            eprintln!("Warning in get_best_gem_estimate: Particles Empty");
             return None;
         }
 

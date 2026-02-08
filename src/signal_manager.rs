@@ -1,29 +1,46 @@
+use std::collections::HashSet;
+
 use crate::{helper_func::Pos, memory::{BotMemory}, signals::*, states::GameState};
 
 pub struct SignalManager {
     pub filter: ParticleFilter,
     pub past_levels: Vec<(Pos, f32)>,
-    intitialized: bool,
+    pub intitialized: bool,
 }
 
 impl SignalManager {
-    pub fn new(mem: &BotMemory) -> Self {
+    pub fn new(width: i32, height: i32, signal_radius: f32) -> Self {
         SignalManager { 
-            filter: ParticleFilter::new(1000, 1000, mem), 
+            filter: ParticleFilter::new(1000, 42, width, height, signal_radius), 
             past_levels: Vec::new(), 
             intitialized: false 
         }
     }
-    pub fn add_measurement(&mut self, bot_pos: Pos, signal: f32, state: &GameState, mem: &BotMemory) {
+    pub fn add_measurement(
+        &mut self, 
+        bot_pos: Pos, 
+        signal: f32, 
+        known_walls: &HashSet<Pos>, 
+        known_floors: &HashSet<Pos>, 
+        vis_floors: &Vec<Pos>
+    ) {
         if !self.intitialized {
-            self.filter.initialize(state, mem);
+            self.filter.initialize(known_walls, known_floors, vis_floors);
             self.intitialized = true;
+            eprintln!("Initializing");
+        }
+
+        if self.filter.particles.is_empty() {
+            eprintln!("CRITICAL ERROR: PARTICELS EMPTY AFTER INITIALSATION")
         }
 
         self.past_levels.push((bot_pos, signal));
 
         // Update den Filter mit neuen Inforamtionen
-        self.filter.update(bot_pos, signal, mem);
+        self.filter.update(bot_pos, signal, );
+
+        // Freie Felder speichern
+        self.filter.save_free_pos(known_walls, known_floors, vis_floors);
 
         // Resample, checking effective sample size
         // Das kommt noch, haben wir nicht implementiert. Deswegen TODO:
@@ -37,8 +54,10 @@ impl SignalManager {
     // DIE HAUPT API
     pub fn get_target(&self) -> Option<Pos> {
         if !self.intitialized {
+            eprintln!("Not initialized");
             return None;
         }
+        eprintln!("{:?}", self.filter.get_best_gem_estimate());
         self.filter.get_best_gem_estimate()
     }
 }

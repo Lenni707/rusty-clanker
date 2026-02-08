@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, HashSet};
 use crate::helper_func::{Pos, get_dist};
 use crate::signal_manager::SignalManager;
 
+
 pub struct BotMemory {
     pub config: Config,
 
@@ -19,7 +20,7 @@ pub struct BotMemory {
     pub last_pos: Option<Pos>,
     pub recent_positions: VecDeque<Pos>,
 
-    pub signal_manager: Option<SignalManager>,
+    pub signal_manager: SignalManager,
 }
 
 pub struct Config {
@@ -95,23 +96,27 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal_manager: None,
+            signal_manager: SignalManager::new(0, 0, 0.0), // Dummy Werte. 
+            // Hier werden nur Nullen verwendet, da die width und height in mem selbst gespeichert sind. 
+            // Signal manager wird beim ersten update mit richtigen Werden geändert. 
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
         // Initialisieren des SignalManagers, muss hier sein da der Signal manager konstruktor BotMemory braucht
-        if self.config.width > 0 && self.signal_manager.is_none() {
-            self.initialize_signal_manager();
+        if state.tick == 1 {
+            eprintln!("Should init");
+            self.signal_manager = SignalManager::new(
+                self.config.width, 
+                self.config.height, 
+                self.config.signal_radius
+            );
+            self.signal_manager.intitialized = true;
         }
 
         // Die aktuelle Messung in den Signalmanager eintragen
         if state.signal_level > 0.0 {
-            // .take wegen rust borrowing
-            if let Some(mut manager) = self.signal_manager.take() {
-                manager.add_measurement(state.bot, state.signal_level, state, self);
-                self.signal_manager = Some(manager);
-            }
+            self.signal_manager.add_measurement(state.bot, state.signal_level, &self.known_walls, &self.known_floors, &state.floor);
         }
         // Alle Gems Markieren
         for gem in &state.visible_gems {
@@ -240,11 +245,11 @@ impl BotMemory {
         best
     }
 
-    pub fn initialize_signal_manager(&mut self) {
-        if self.signal_manager.is_none() {
-            self.signal_manager = Some(SignalManager::new(self));
-        }
-    }
+    // pub fn initialize_signal_manager(&mut self) {
+    //     if self.signal_manager.is_none() {
+    //         self.signal_manager = Some(SignalManager::new(self));
+    //     }
+    // }
 }
 
 pub fn get_closer_pos(

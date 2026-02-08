@@ -39,16 +39,21 @@ pub fn decide(
     state: &GameState,
     memory: &mut BotMemory,
     highlights: &mut Highlighter,
-    signal_manager: &SignalManager
 ) -> Direction {
+    // Erstmal das signal Target holen, wenn es vorhanden ist. Das ist hässlich aber das macht sonst unten keinen Sinn
+    // Wenn jemand mal Lust hat das besser zu machen go for it.
+    
     let target = if let Some(t) = memory.get_target() {
         // Gibt es einen target gem
         highlights.add_point(t, colors::RED);
         t
-    } else if let Some(pos) = signal_manager.get_target() && state.signal_level > 0.0 { // if there is a signal target
+    } 
+    else if let Some(pos) = memory.signal_manager.get_target() {
         highlights.add_point(pos, colors::PURPLE);
+        eprintln!("Found Signal Target: {:?}", pos);
         pos
-    } else if let Some(pos) = memory.exploration_target {
+    } 
+    else if let Some(pos) = memory.exploration_target {
         // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);
         // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {
