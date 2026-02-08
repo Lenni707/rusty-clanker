@@ -52,36 +52,35 @@ impl SignalSolver {
         let mut stack = vec![self.bot_pos];
         
         while let Some(current) = stack.pop() {
-            // Skip if already visited
             if reachable.contains(&current) {
                 continue;
             }
             
-            // Skip if this is a known wall
+            // wenn es eine known wall ist skippen
             if known_walls.contains(&current) {
                 continue;
             }
             
-            // Mark as reachable
+            // wird dann reachable
             reachable.insert(current);
             
-            // Try to flood to all 4 neighbors
+            // versuchen alles nachbarn des feldes zu flodden
             let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
             for dir in &directions {
                 let next = [current[0] + dir[0], current[1] + dir[1]];
                 
-                // Check bounds
+                // ob es noch in bounds ist
                 if next[0] < 0 || next[0] >= self.width || 
                    next[1] < 0 || next[1] >= self.height {
                     continue;
                 }
                 
-                // Don't flood through known walls
+                // nicht flodden wenn wand
                 if known_walls.contains(&next) {
                     continue;
                 }
                 
-                // Add to stack if not already visited
+                // wenn noch nicht visited zu staxk pushen (eig unnötig weil oben schon gecjhecjkt wird)
                 if !reachable.contains(&next) {
                     stack.push(next);
                 }
@@ -91,7 +90,7 @@ impl SignalSolver {
         reachable
     }
     
-    // Berechnet, wie gut eine Gegebene position zu den letzen measurements passt
+    // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
     fn rate_position(&self, gem_positions: &[Pos]) -> f32 {
         let mut total_error = 0.0;
         
