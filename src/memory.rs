@@ -5,7 +5,7 @@ use crate::explore::has_line_of_sight;
 use crate::states::GameState;
 
 use crate::helper_func::{get_dist, Pos};
-use crate::signals::SignalSolver;
+use crate::signals::{self, SignalSolver};
 
 pub struct BotMemory {
     pub config: Config,
@@ -26,8 +26,6 @@ pub struct BotMemory {
     pub signal: SignalStats,
     pub signal_target: Option<Pos>,
     pub last_signal_targets: Vec<Pos>,
-
-    pub bot_pos:
 }
 
 pub struct Config {
@@ -115,9 +113,12 @@ impl BotMemory {
             self.signal_solver = SignalSolver::new(
                 self.config.width, 
                 self.config.height, 
-                self.config.signal_radius
+                self.config.signal_radius,
+                [0, 0] // mock value fuck borrow checker
             );
         }
+
+        self.signal_solver.bot_pos = state.bot;
 
         if state.signal_level > 0.0 {
             self.signal_solver.add_measurement(state.signal_level, state.bot);

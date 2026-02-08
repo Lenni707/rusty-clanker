@@ -8,7 +8,7 @@ pub struct SignalSolver {
     width: i32,
     height: i32,
     signal_radius: f32,
-    bot_pos:Pos
+    pub bot_pos:Pos
 }
 
 impl SignalSolver {
@@ -29,6 +29,7 @@ impl SignalSolver {
         self.measurements.push((pos, signal_level));
     }
 
+    // man eigentlich ist das so geil
     pub fn update_measurenments(&mut self, target_gem: Pos, radius: f32) {
         for (bot_pos, signal) in &mut self.measurements {
             let contrib = signal_from_dist(*bot_pos, target_gem, radius);
@@ -39,6 +40,55 @@ impl SignalSolver {
 
     pub fn clear_measuremnts(&mut self) {
         self.measurements.clear();
+    }
+    
+    // ACHTUNG!!:
+    // smarte sache:
+    // assumpted jede position erstmal als wall oder als "unreachable", benutzt dann Flood fill, um die reachable positionen auszuweiten
+    // der flood fill stoppt bei known_walls
+    // genutzt um freie positionen zu finden, weil known walls nur die äußerste wand von großen wand blöckebn beeinhaltet
+    fn get_reachable_positions(&self, known_walls: &HashSet<Pos>) -> HashSet<Pos> {
+        let mut reachable = HashSet::new();
+        let mut stack = vec![self.bot_pos];
+        
+        while let Some(current) = stack.pop() {
+            // Skip if already visited
+            if reachable.contains(&current) {
+                continue;
+            }
+            
+            // Skip if this is a known wall
+            if known_walls.contains(&current) {
+                continue;
+            }
+            
+            // Mark as reachable
+            reachable.insert(current);
+            
+            // Try to flood to all 4 neighbors
+            let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for dir in &directions {
+                let next = [current[0] + dir[0], current[1] + dir[1]];
+                
+                // Check bounds
+                if next[0] < 0 || next[0] >= self.width || 
+                   next[1] < 0 || next[1] >= self.height {
+                    continue;
+                }
+                
+                // Don't flood through known walls
+                if known_walls.contains(&next) {
+                    continue;
+                }
+                
+                // Add to stack if not already visited
+                if !reachable.contains(&next) {
+                    stack.push(next);
+                }
+            }
+        }
+        
+        reachable
     }
     
     // Berechnet, wie gut eine Gegebene position zu den letzen measurements passt
@@ -62,6 +112,8 @@ impl SignalSolver {
             return None;
         }
 
+        let reachable = self.get_reachable_positions(known_walls);
+
         let mut best_score = 0.0;
         let mut best_pos = None;
 
@@ -70,6 +122,10 @@ impl SignalSolver {
                 let pos = [x, y];
 
                 if known_walls.contains(&pos) || vis_floors.contains(&pos) {
+                    continue;
+                }
+
+                if !reachable.contains(&pos) {
                     continue;
                 }
 
@@ -88,13 +144,9 @@ impl SignalSolver {
         if self.measurements.is_empty() {
             return None;
         }
-        // if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
-        //     self.signal_target = None;
-        //     self.last_signal_targets.clear();
-        //     eprintln!("No way found, reseting signal_taret");
-        //     return None;
-        // }
-        // Coarse search: every 5th cell
+
+        let reachable = self.get_reachable_positions(known_walls);
+
         let step = 5;
         let mut best_score = 0.0;
         let mut best_pos = None;
@@ -102,16 +154,24 @@ impl SignalSolver {
         for x1 in (0..self.width).step_by(step) {
             for y1 in (0..self.height).step_by(step) {
                 let pos1 = [x1, y1];
-                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
+                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
                     continue;
                 }
+
+                if !reachable.contains(&pos1) {
+                    continue;
+                }   
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
                         let pos2 = [x2, y2];
-                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
+                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
                             continue;
                         }
+
+                        if !reachable.contains(&pos1) {
+                            continue;
+                        }       
                         
                         let score = self.rate_position(&[pos1, pos2]);
                         if score > best_score {
@@ -123,9 +183,8 @@ impl SignalSolver {
             }
         }
         
-        // Refine locally around best coarse solution
         if let Some((coarse1, coarse2)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2], known_walls, vis_floors)
+            self.refine_positions(vec![coarse1, coarse2], known_walls, vis_floors, &reachable)
                 .map(|v| (v[0], v[1]))
         } else {
             None
@@ -136,8 +195,9 @@ impl SignalSolver {
         if self.measurements.is_empty() {
             return None;
         }
+
+        let reachable = self.get_reachable_positions(known_walls);
         
-        // Coarse search: every 6th cell for 3 gems
         let step = 6;
         let mut best_score = 0.0;
         let mut best_pos = None;
@@ -145,23 +205,35 @@ impl SignalSolver {
         for x1 in (0..self.width).step_by(step) {
             for y1 in (0..self.height).step_by(step) {
                 let pos1 = [x1, y1];
-                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
+                if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
                     continue;
                 }
+
+                if !reachable.contains(&pos1) {
+                    continue;
+                }   
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
                         let pos2 = [x2, y2];
-                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
+                        if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
                             continue;
                         }
+
+                        if !reachable.contains(&pos1) {
+                            continue;
+                        }   
                         
                         for x3 in (0..self.width).step_by(step) {
                             for y3 in (0..self.height).step_by(step) {
                                 let pos3 = [x3, y3];
-                                if known_walls.contains(&pos3) || vis_floors.contains(&pos3) || astar(self.bot_pos, pos1, known_walls, self.width, self.height).is_none() {
+                                if known_walls.contains(&pos3) || vis_floors.contains(&pos3) {
                                     continue;
                                 }
+
+                                if !reachable.contains(&pos1) {
+                                    continue;
+                                }   
                                 
                                 let score = self.rate_position(&[pos1, pos2, pos3]);
                                 if score > best_score {
@@ -175,17 +247,16 @@ impl SignalSolver {
             }
         }
         
-        // Refine locally around best coarse solution
         if let Some((coarse1, coarse2, coarse3)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2, coarse3], known_walls, vis_floors)
+            self.refine_positions(vec![coarse1, coarse2, coarse3], known_walls, vis_floors, &reachable)
                 .map(|v| (v[0], v[1], v[2]))
         } else {
             None
         }
     }
     
-    // Hill climbing refinement: move each gem to better adjacent positions
-    fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Vec<Pos>> {
+    // immer ein bisschen verbessern => jeden gem um ein bisschen verschieben bis er besser passt (höherer score)
+    fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut improved = true;
         let mut best_score = self.rate_position(&positions);
         let max_refinement_iterations = 100; // Prevent infinite loops
@@ -195,7 +266,6 @@ impl SignalSolver {
             improved = false;
             iteration += 1;
             
-            // Try to improve each gem position
             for gem_idx in 0..positions.len() {
                 let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
                 let old_pos = positions[gem_idx];
@@ -206,7 +276,11 @@ impl SignalSolver {
                     // Check bounds and validity
                     if new_pos[0] < 0 || new_pos[0] >= self.width || 
                        new_pos[1] < 0 || new_pos[1] >= self.height ||
-                       known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) || astar(self.bot_pos, new_pos, known_walls, self.width, self.height).is_none() {
+                       known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) {
+                        continue;
+                    }
+
+                    if !reachable.contains(&new_pos) {
                         continue;
                     }
                     
@@ -218,7 +292,7 @@ impl SignalSolver {
                         improved = true;
                         break; // Move to next gem once we found improvement
                     } else {
-                        positions[gem_idx] = old_pos; // Revert if not better
+                        positions[gem_idx] = old_pos; // revert if it didnt improve
                     }
                 }
             }
@@ -227,77 +301,62 @@ impl SignalSolver {
         Some(positions)
     }
 
-    
-    // pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
-    //     let gem = self.find_single_gem(known_walls, vis_floors)?;
-    //     let score = self.rate_position(&[gem]);
-    //     // if score < 500.0 {
-    //     //     let gems = self.find_two_gems(known_walls, vis_floors)?;
-            
-    //     //     let score = self.rate_position(&[gems.0, gems.1]);
-
-    //     //     return Some(gems.0);
-    //     // }
-    //     eprintln!("Found gem at {:?} with score {}", gem, score);
-    //     Some(gem)
-    // }
-
     pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
         if self.measurements.len() < 3 {
             eprintln!("Not enough measurements yet");
             return None;
         }
         
-        // Try 1 gem first (always fastest)
+        // try to search for one gem first
         let gem1 = self.find_single_gem(known_walls, vis_floors)?;
         let score1 = self.rate_position(&[gem1]);
         
         eprintln!("1-gem solution: {:?} with score {:.2}", gem1, score1);
         
-        // If score is very good, probably just 1 gem
-        if score1 > 50.0 {
+        // wenn der eine gem gut ist dann ist es wahrscheinlich ein gem
+        if score1 > 50.0 { // kann man tweaken
             eprintln!("High confidence: 1 gem");
             return Some(gem1);
         }
         
-        // Try 2 gems
+        // sonst nach 2 gems ausprobieren
         let (gem_a, gem_b) = self.find_two_gems(known_walls, vis_floors)?;
         let score2 = self.rate_position(&[gem_a, gem_b]);
         
         eprintln!("2-gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
         
-        // Check if 2-gem is significantly better (at least 50% improvement)
+        // wenn 20 gems min. 50 % besser ist als 1 gem, dann 2 gems nehmen
         if score2 > score1 * 1.5 && score2 > 50.0 {
             eprintln!("High confidence: 2 gems");
             // Return closest gem to current bot position
             return Some(self.get_closest_gem(&[gem_a, gem_b]));
         }
         
-        // If 2-gem wasn't much better, might be 3 gems
+        // wenn auch 2 gems schlecht sind, sind es wahrscheinlich 3 gems
         if score2 < 30.0 {
             let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
             let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
             
             eprintln!("3-gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
             
-            // Use 3-gem if significantly better than 2-gem
+            // wenn 3 gems 30 % besser als 2 gems istr, dann sind es 3
             if score3 > score2 * 1.3 {
                 eprintln!("Using 3-gem solution");
                 return Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]));
             }
         }
         
-        // Default to best solution found
+        // default zurücl zur besten solution von beiden wenn es nicht geht
         if score2 > score1 {
-            eprintln!("Using 2-gem solution");
+            eprintln!("default: Using 2-gem solution");
             Some(self.get_closest_gem(&[gem_a, gem_b]))
         } else {
-            eprintln!("Using 1-gem solution");
+            eprintln!("default: Using 1-gem solution");
             Some(gem1)
         }
     }
 
-    // Helper: find closest gem to bot's most recent position
+    // find the closest gem
     fn get_closest_gem(&self, gems: &[Pos]) -> Pos {
         if let Some((last_bot_pos, _)) = self.measurements.last() {
             gems.iter()
@@ -314,8 +373,7 @@ impl SignalSolver {
     }
 }
 
-
-
+// calc the signal level from a euclidian distance
 fn signal_from_dist(pos1: Pos, pos2: Pos, radius: f32) -> f32 {
     let dist = euclidean(pos1, pos2);
     let s = 1.0 / (1.0 + (dist / radius).powf(2.0));
