@@ -160,6 +160,7 @@ impl BotMemory {
         // self.known_positions.retain(|_, &mut last_seen| state.tick - last_seen < 250);
 
         // Check für das current target
+        let mut change_curr_target = false;
         if let Some(target) = &self.current_target {
             // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
             self.exploration_target = None;
@@ -175,12 +176,36 @@ impl BotMemory {
             if reached || (!vivsible && state.floor.contains(&target.position)) {
                 // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.known_gems.remove(&target.position);
-                self.current_target = None;
+                change_curr_target = true;
             }
+            // Auch wenn der andere Bot näher ist:
+            if let Some(enemy_bots) = &state.visible_bots {
+                for bot in enemy_bots {
+                    // Wenn gegnerischer Bot gem sehen kann
+                    if has_line_of_sight(bot.position, target.position, &self.known_walls, self.config.vis_radius) {
+                        if let Some(enemy_path) = astar(bot.position, target.position, &self.known_walls, self.config.width, self.config.height) {
+                            if let  Some(own_path) = astar(state.bot, target.position, &self.known_walls, self.config.width, self.config.height) {
+                                if enemy_path.len() + 2 < own_path.len() {
+                                    change_curr_target = true;
+                                    self.known_gems.remove(&target.position);
+                                    //self
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if change_curr_target {
+            self.current_target = None;
         }
         // Signal Target Check; Wurde es erreicht?
         let mut change_sig_target = false;
         if let Some(target) = &self.signal_target {
+            if state.signal_level <= 0.1 {
+                change_sig_target = true;
+                eprint!("ÖLASDÖFDSLJFKÖLSDFJÖSJDFÖSLFJKÖSDFJ")
+            }
             // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
             self.exploration_target = None;
             // Checks für curr target
