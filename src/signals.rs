@@ -53,6 +53,7 @@ pub struct ParticleFilter {
     jitter_config: JitterConfig,  // Erklärung steht bei der implementierung
     width: i32, // Fuck you wenn du sagst das das ineffizient ist weißt du durch wie viele Funktionen in memory durchgeben müsste??
     height: i32, // Das ist jetzt so wenn du damit ein Problem hast dann ist das jetzt wohl so
+    pub past_mesurements: Vec<(Pos, f32)>,
     signal_radius: f32,
 }
 
@@ -72,6 +73,7 @@ impl ParticleFilter {
             jitter_config: JitterConfig::default(),
             width: width,
             height: height,
+            past_mesurements: Vec::new(),
             signal_radius: signal_radius,
         }
     }
@@ -112,17 +114,32 @@ impl ParticleFilter {
 
     // Bewertet die Partikel anhand der Messungen
     pub fn update(&mut self, bot_pos: [i32; 2], observed_signal: f32) {
+        self.past_mesurements.push((bot_pos, observed_signal));
+
+        // Nur die letzten 10 vergangengen Messungen
+        if self.past_mesurements.len() > 10 {
+            self.past_mesurements.remove(0);
+        }
+        
         let mut total_weight = 0.0;
+        let epsilon = 0.001;
 
         // Für jeden Partikel
         for particle in &mut self.particles {
-            // Was würde ich in der angenommenen Welt messen
-            let expected = particle.get_signal_sum(bot_pos, self.signal_radius);
-            // Wie gut ist das erwartete im Vergleich zum echten Ergebnis?
-            let diff = (expected - observed_signal).abs();
+            let mut cumulative_likihood = 1.0;
+
+            for (past_pos, past_signal) in &self.past_mesurements {
+                // Was würde ich in der angenommenen Welt messen
+                let expected = particle.get_signal_sum(*past_pos, self.signal_radius);
+                // Wie gut ist das erwartete im Vergleich zum echten Ergebnis?
+                let diff = (expected - past_signal).abs();
+
+                let likelihood = 1.0 / (epsilon + diff * 10.0 );// TODO: die 10 kann hier geändert werden
+                cumulative_likihood *= likelihood
+            }
 
             // Smaller diff = höheres gewicht
-            particle.weight = 1.0 / (1.0 * diff * 10.0); // TODO: die 10 kann hier geändert werden
+            particle.weight = cumulative_likihood;
             total_weight += particle.weight;
 
             // Eigentlich gibt es keine Messfehler
@@ -219,8 +236,8 @@ impl ParticleFilter {
         height: i32,
         rng: &mut StdRng,
     ) {
-        let width = 48;
-        let height = 28;
+        let width = 49;
+        let height = 29;
         if particle.gem_positions.is_empty() {
             return;
         }

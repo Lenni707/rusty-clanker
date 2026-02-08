@@ -39,8 +39,6 @@ impl SignalManager {
             eprintln!("CRITICAL ERROR: PARTICELS EMPTY AFTER INITIALSATION")
         }
 
-        self.past_levels.push((bot_pos, signal));
-
         // Update den Filter mit neuen Inforamtionen
         self.filter.update(bot_pos, signal, );
 
