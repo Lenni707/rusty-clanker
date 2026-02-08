@@ -22,6 +22,7 @@ pub struct BotMemory {
     pub signal_solver: SignalSolver,
 
     pub signal: SignalStats,
+    pub current_signal_target: Option<Pos>,
 }
 
 pub struct Config {
@@ -97,7 +98,8 @@ impl BotMemory {
 
             signal_solver: SignalSolver::new(49, 29, 5.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
 
-            signal: SignalStats::new()
+            signal: SignalStats::new(),
+            current_signal_target: None,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -196,10 +198,21 @@ impl BotMemory {
     }
 
     pub fn get_target(&self) -> Option<[i32; 2]> {
-        match &self.current_target {
-            Some(gem) => Some(gem.position),
+        let curr_tar = match &self.current_target {
+            Some(t) => Some(t.position),
             None => None,
+        };
+        let curr_sig_tar = match &self.current_signal_target {
+            Some(t) => Some(t),
+            None => None,
+        };
+        if curr_sig_tar.is_none() {
+            if curr_tar.is_none() {
+                return curr_tar;
+            }
+            return curr_tar;
         }
+        curr_sig_tar.copied()
     }
 
     pub fn get_best_gem(&self, state: &GameState) -> Option<[i32; 2]> {

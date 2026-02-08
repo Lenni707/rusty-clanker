@@ -123,5 +123,8 @@ impl SignalSolver {
 
 fn signal_from_dist(pos1: Pos, pos2: Pos, radius: f32) -> f32 {
     let dist = euclidean(pos1, pos2);
-    1.0 / (1.0 + (dist / radius).powf(2.0))
+    let s = 1.0 / (1.0 + (dist / radius).powf(2.0));
+
+    let factor = 1_000_000.0_f32;
+    (s * factor).trunc() / factor
 }
