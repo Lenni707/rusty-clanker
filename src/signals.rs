@@ -255,11 +255,56 @@ impl SignalSolver {
         }
     }
     
-    // immer ein bisschen verbessern => jeden gem um ein bisschen verschieben bis er besser passt (höherer score)
+    // // immer ein bisschen verbessern => jeden gem um ein bisschen verschieben bis er besser passt (höherer score)
+    // fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
+    //     let mut improved = true;
+    //     let mut best_score = self.rate_position(&positions);
+    //     let max_refinement_iterations = 200; 
+    //     let mut iteration = 0;
+        
+    //     while improved && iteration < max_refinement_iterations {
+    //         improved = false;
+    //         iteration += 1;
+            
+    //         for gem_idx in 0..positions.len() {
+    //             let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    //             let old_pos = positions[gem_idx];
+                
+    //             for dir in &directions {
+    //                 let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
+                    
+    //                 // Check bounds and validity
+    //                 if new_pos[0] < 0 || new_pos[0] >= self.width || 
+    //                    new_pos[1] < 0 || new_pos[1] >= self.height ||
+    //                    known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) {
+    //                     continue;
+    //                 }
+
+    //                 if !reachable.contains(&new_pos) {
+    //                     continue;
+    //                 }
+                    
+    //                 positions[gem_idx] = new_pos;
+    //                 let new_score = self.rate_position(&positions);
+                    
+    //                 if new_score > best_score {
+    //                     best_score = new_score;
+    //                     improved = true;
+    //                     break; // Move to next gem once we found improvement
+    //                 } else {
+    //                     positions[gem_idx] = old_pos; // revert if it didnt improve
+    //                 }
+    //             }
+    //         }
+    //     }
+        
+    //     Some(positions)
+    // }
+
     fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut improved = true;
         let mut best_score = self.rate_position(&positions);
-        let max_refinement_iterations = 200; 
+        let max_refinement_iterations = 1000; // Increase limit since we're being thorough
         let mut iteration = 0;
         
         while improved && iteration < max_refinement_iterations {
@@ -269,35 +314,41 @@ impl SignalSolver {
             for gem_idx in 0..positions.len() {
                 let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
                 let old_pos = positions[gem_idx];
+                let mut best_dir_score = best_score;
+                let mut best_dir_pos = old_pos;
                 
+                // Try ALL 4 directions and pick the best one
                 for dir in &directions {
                     let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
                     
-                    // Check bounds and validity
                     if new_pos[0] < 0 || new_pos[0] >= self.width || 
-                       new_pos[1] < 0 || new_pos[1] >= self.height ||
-                       known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) {
-                        continue;
-                    }
-
-                    if !reachable.contains(&new_pos) {
+                    new_pos[1] < 0 || new_pos[1] >= self.height ||
+                    known_walls.contains(&new_pos) || vis_floors.contains(&new_pos) ||
+                    !reachable.contains(&new_pos) {
                         continue;
                     }
                     
                     positions[gem_idx] = new_pos;
                     let new_score = self.rate_position(&positions);
                     
-                    if new_score > best_score {
-                        best_score = new_score;
-                        improved = true;
-                        break; // Move to next gem once we found improvement
-                    } else {
-                        positions[gem_idx] = old_pos; // revert if it didnt improve
+                    if new_score > best_dir_score {
+                        best_dir_score = new_score;
+                        best_dir_pos = new_pos;
                     }
+                    
+                    positions[gem_idx] = old_pos; // Reset for next direction test
+                }
+                
+                // Apply the best move found for this gem
+                if best_dir_pos != old_pos {
+                    positions[gem_idx] = best_dir_pos;
+                    best_score = best_dir_score;
+                    improved = true;
                 }
             }
         }
         
+        eprintln!("refiment stopped after {} iterations with score {:.2}", iteration, best_score);
         Some(positions)
     }
 
