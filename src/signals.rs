@@ -95,15 +95,6 @@ impl SignalSolver {
         best_pos
     }
     
-    pub fn get_aproximate_gem_amount(last_signal: f32, current_signal: f32, mem: &mut BotMemory) { // TODO: kein hardcoded amount, sondern richtig
-        let signal_change = current_signal - last_signal;
-        if signal_change <= -0.2 {
-            mem.signal_count -= 1;
-        } else if signal_change >= 0.2 {
-            mem.signal_count += 1;
-        }
-    }
-
     pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
         let gem = self.find_single_gem(known_walls, vis_floors)?;
         let score = self.rate_position(&[gem]);
