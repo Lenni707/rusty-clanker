@@ -8,6 +8,7 @@ mod explore;
 mod helper_func;
 mod astar;
 mod highlights;
+mod signals;
 
 use decision::decide;
 use states::GameState;
