@@ -304,7 +304,7 @@ impl SignalSolver {
     fn refine_positions(&self, mut positions: Vec<Pos>, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut improved = true;
         let mut best_score = self.rate_position(&positions);
-        let max_refinement_iterations = 1000; // Increase limit since we're being thorough
+        let max_refinement_iterations = 1000;
         let mut iteration = 0;
         
         while improved && iteration < max_refinement_iterations {
@@ -317,7 +317,6 @@ impl SignalSolver {
                 let mut best_dir_score = best_score;
                 let mut best_dir_pos = old_pos;
                 
-                // Try ALL 4 directions and pick the best one
                 for dir in &directions {
                     let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
                     
@@ -336,10 +335,10 @@ impl SignalSolver {
                         best_dir_pos = new_pos;
                     }
                     
-                    positions[gem_idx] = old_pos; // Reset for next direction test
+                    positions[gem_idx] = old_pos;
                 }
                 
-                // Apply the best move found for this gem
+                // apply best move
                 if best_dir_pos != old_pos {
                     positions[gem_idx] = best_dir_pos;
                     best_score = best_dir_score;

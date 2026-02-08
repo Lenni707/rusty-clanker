@@ -84,6 +84,11 @@ pub fn decide(
     } 
     else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
+        if astar(state.bot, new_target, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
+            // Target not rachable
+            eprintln!("TARGET NOT REACHABLE");
+            return movement_fallback(memory, state, Some(new_target)); // changes the target until it is reachable
+        }
         highlights.add_point(new_target, colors::GREEN);
         new_target
     } 
