@@ -26,6 +26,7 @@ pub struct BotMemory {
     pub signal: SignalStats,
     pub signal_target: Option<Pos>,
     pub last_signal_targets: Vec<Pos>,
+    pub ticks_since_last_signal: i32,
 }
 
 pub struct Config {
@@ -104,6 +105,7 @@ impl BotMemory {
             signal: SignalStats::new(),
             signal_target: None,
             last_signal_targets: Vec::new(),
+            ticks_since_last_signal: 0,
         }
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
@@ -121,7 +123,10 @@ impl BotMemory {
         self.signal_solver.bot_pos = state.bot;
 
         if state.signal_level > 0.0 {
+            self.ticks_since_last_signal = 0;
             self.signal_solver.add_measurement(state.signal_level, state.bot);
+        } else {
+            self.ticks_since_last_signal += 1;
         }
         
         // Alle Gems Markieren
@@ -202,7 +207,7 @@ impl BotMemory {
         // Signal Target Check; Wurde es erreicht?
         let mut change_sig_target = false;
         if let Some(target) = &self.signal_target {
-            if state.signal_level <= 0.1 {
+            if self.ticks_since_last_signal > 5 {
                 change_sig_target = true;
                 eprint!("ÖLASDÖFDSLJFKÖLSDFJÖSJDFÖSLFJKÖSDFJ")
             }
