@@ -22,11 +22,6 @@ impl SignalManager {
         known_walls: &HashSet<Pos>, 
         _vis_floors: &Vec<Pos>  // Nicht mehr gebraucht
     ) {
-        if !self.initialized {
-            self.initialized = true;
-            eprintln!("Signal Manager initialized");
-        }
-
         self.solver.add_measurement(bot_pos, signal);
     }
 

@@ -32,15 +32,6 @@ pub struct Config {
     pub signal_radius: f32,
 }
 
-pub struct SignalStats {
-    pub signal_target: Option<Pos>,
-    pub gem_signal_map: BTreeMap<[i32; 2], f32>,
-    pub last_signal: Option<f32>,
-    pub ticks_since_signal_up: i32,
-    pub best_signal: f32,
-    pub gem_canidates: Vec<Pos>,
-}
-
 #[derive(Debug, PartialEq)]
 pub struct GemMemory {
     pub position: [i32; 2],
@@ -63,19 +54,6 @@ impl Config {
             max_ticks: 0,
             gem_ttl: 0,
             signal_radius: 0.0,
-        }
-    }
-}
-
-impl SignalStats {
-    fn new() -> Self {
-        SignalStats {
-            signal_target: None,
-            gem_signal_map: BTreeMap::new(),
-            last_signal: None,
-            ticks_since_signal_up: 0,
-            best_signal: 0.0,
-            gem_canidates: Vec::new(),
         }
     }
 }
