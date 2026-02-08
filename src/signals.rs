@@ -301,57 +301,91 @@ impl SignalSolver {
         Some(positions)
     }
 
+    // pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+    //     if self.measurements.len() < 3 {
+    //         eprintln!("Not enough measurements yet");
+    //         return None;
+    //     }
+        
+    //     // try to search for one gem first
+    //     let gem1 = self.find_single_gem(known_walls, vis_floors)?;
+    //     let score1 = self.rate_position(&[gem1]);
+        
+    //     eprintln!("1-gem solution: {:?} with score {:.2}", gem1, score1);
+        
+    //     // wenn der eine gem gut ist dann ist es wahrscheinlich ein gem
+    //     if score1 > 50.0 { // kann man tweaken
+    //         eprintln!("High confidence: 1 gem");
+    //         return Some(gem1);
+    //     }
+        
+    //     // sonst nach 2 gems ausprobieren
+    //     let (gem_a, gem_b) = self.find_two_gems(known_walls, vis_floors)?;
+    //     let score2 = self.rate_position(&[gem_a, gem_b]);
+        
+    //     eprintln!("2-gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
+        
+    //     // wenn 20 gems min. 50 % besser ist als 1 gem, dann 2 gems nehmen
+    //     if score2 > score1 * 1.5 && score2 > 50.0 {
+    //         eprintln!("High confidence: 2 gems");
+    //         // Return closest gem to current bot position
+    //         return Some(self.get_closest_gem(&[gem_a, gem_b]));
+    //     }
+        
+    //     // wenn auch 2 gems schlecht sind, sind es wahrscheinlich 3 gems
+    //     if score2 < 30.0 {
+    //         let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
+    //         let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
+            
+    //         eprintln!("3-gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
+            
+    //         // wenn 3 gems 30 % besser als 2 gems istr, dann sind es 3
+    //         if score3 > score2 * 1.3 {
+    //             eprintln!("Using 3-gem solution");
+    //             return Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]));
+    //         }
+    //     }
+        
+    //     // default zurücl zur besten solution von beiden wenn es nicht geht
+    //     if score2 > score1 {
+    //         eprintln!("default: Using 2-gem solution");
+    //         Some(self.get_closest_gem(&[gem_a, gem_b]))
+    //     } else {
+    //         eprintln!("default: Using 1-gem solution");
+    //         Some(gem1)
+    //     }
+    // }
+
     pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
         if self.measurements.len() < 3 {
             eprintln!("Not enough measurements yet");
             return None;
         }
         
-        // try to search for one gem first
+        // Try 1 gem
         let gem1 = self.find_single_gem(known_walls, vis_floors)?;
         let score1 = self.rate_position(&[gem1]);
-        
         eprintln!("1-gem solution: {:?} with score {:.2}", gem1, score1);
         
-        // wenn der eine gem gut ist dann ist es wahrscheinlich ein gem
-        if score1 > 50.0 { // kann man tweaken
-            eprintln!("High confidence: 1 gem");
-            return Some(gem1);
-        }
-        
-        // sonst nach 2 gems ausprobieren
+        // Try 2 gems
         let (gem_a, gem_b) = self.find_two_gems(known_walls, vis_floors)?;
         let score2 = self.rate_position(&[gem_a, gem_b]);
-        
         eprintln!("2-gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
         
-        // wenn 20 gems min. 50 % besser ist als 1 gem, dann 2 gems nehmen
-        if score2 > score1 * 1.5 && score2 > 50.0 {
-            eprintln!("High confidence: 2 gems");
-            // Return closest gem to current bot position
-            return Some(self.get_closest_gem(&[gem_a, gem_b]));
-        }
+        // Try 3 gems
+        let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
+        let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
+        eprintln!("3-gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
         
-        // wenn auch 2 gems schlecht sind, sind es wahrscheinlich 3 gems
-        if score2 < 30.0 {
-            let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
-            let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
-            
-            eprintln!("3-gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
-            
-            // wenn 3 gems 30 % besser als 2 gems istr, dann sind es 3
-            if score3 > score2 * 1.3 {
-                eprintln!("Using 3-gem solution");
-                return Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]));
-            }
-        }
-        
-        // default zurücl zur besten solution von beiden wenn es nicht geht
-        if score2 > score1 {
-            eprintln!("default: Using 2-gem solution");
+        // Pick the solution with highest score
+        if score3 >= score2 && score3 >= score1 {
+            eprintln!("Using 3-gem solution (highest score)");
+            Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]))
+        } else if score2 >= score1 {
+            eprintln!("Using 2-gem solution (highest score)");
             Some(self.get_closest_gem(&[gem_a, gem_b]))
         } else {
-            eprintln!("default: Using 1-gem solution");
+            eprintln!("Using 1-gem solution (highest score)");
             Some(gem1)
         }
     }
