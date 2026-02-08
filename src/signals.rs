@@ -358,34 +358,33 @@ impl SignalSolver {
 
     pub fn get_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
         if self.measurements.len() < 3 {
-            eprintln!("Not enough measurements yet");
             return None;
         }
         
-        // Try 1 gem
+        // try 1 gem
         let gem1 = self.find_single_gem(known_walls, vis_floors)?;
         let score1 = self.rate_position(&[gem1]);
-        eprintln!("1-gem solution: {:?} with score {:.2}", gem1, score1);
+        eprintln!("1 gem solution: {:?} with score {:.2}", gem1, score1);
         
-        // Try 2 gems
+        // try 2 gems
         let (gem_a, gem_b) = self.find_two_gems(known_walls, vis_floors)?;
         let score2 = self.rate_position(&[gem_a, gem_b]);
-        eprintln!("2-gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
+        eprintln!("2 gem solution: {:?}, {:?} with score {:.2}", gem_a, gem_b, score2);
         
-        // Try 3 gems
+        // try 3 gems
         let (gem_x, gem_y, gem_z) = self.find_three_gems(known_walls, vis_floors)?;
         let score3 = self.rate_position(&[gem_x, gem_y, gem_z]);
-        eprintln!("3-gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
+        eprintln!("3 gem solution: {:?}, {:?}, {:?} with score {:.2}", gem_x, gem_y, gem_z, score3);
         
-        // Pick the solution with highest score
+        // pick the one with the highest score
         if score3 >= score2 && score3 >= score1 {
-            eprintln!("Using 3-gem solution (highest score)");
+            eprintln!("3 gem solution");
             Some(self.get_closest_gem(&[gem_x, gem_y, gem_z]))
         } else if score2 >= score1 {
-            eprintln!("Using 2-gem solution (highest score)");
+            eprintln!("2 gem solution");
             Some(self.get_closest_gem(&[gem_a, gem_b]))
         } else {
-            eprintln!("Using 1-gem solution (highest score)");
+            eprintln!("1 gem solution");
             Some(gem1)
         }
     }
