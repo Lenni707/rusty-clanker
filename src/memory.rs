@@ -176,7 +176,6 @@ impl BotMemory {
                 // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.known_gems.remove(&target.position);
                 self.current_target = None;
-                eprintln!("Target not there, {} {}", state.tick, vivsible)
             }
         }
         // Signal Target Check; Wurde es erreicht?
@@ -192,7 +191,6 @@ impl BotMemory {
             if reached || (!visible && state.floor.contains(&target)) {
                 // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
                 self.signal_target = None;
-                eprintln!("Target not there, {} {}", state.tick, visible)
             }
         }
 
