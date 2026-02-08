@@ -16,16 +16,21 @@ impl SignalManager {
             intitialized: false 
         }
     }
+    
+    pub fn initialize_sig_man(&mut self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) {
+        self.filter.initialize(known_walls, vis_floors);
+        self.intitialized = true;
+    }
+
     pub fn add_measurement(
         &mut self, 
         bot_pos: Pos, 
         signal: f32, 
         known_walls: &HashSet<Pos>, 
-        known_floors: &HashSet<Pos>, 
         vis_floors: &Vec<Pos>
     ) {
         if !self.intitialized {
-            self.filter.initialize(known_walls, known_floors, vis_floors);
+            self.filter.initialize(known_walls, vis_floors);
             self.intitialized = true;
             eprintln!("Initializing");
         }
@@ -39,16 +44,13 @@ impl SignalManager {
         // Update den Filter mit neuen Inforamtionen
         self.filter.update(bot_pos, signal, );
 
-        // Freie Felder speichern
-        self.filter.save_free_pos(known_walls, known_floors, vis_floors);
-
         // Resample, checking effective sample size
         // Das kommt noch, haben wir nicht implementiert. Deswegen TODO:
 
         self.filter.resample();
 
         // adding variaiton
-        self.filter.jitter();
+        self.filter.jitter(known_walls, vis_floors);
     }
 
     // DIE HAUPT API
