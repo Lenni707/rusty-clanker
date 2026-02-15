@@ -13,6 +13,7 @@ mod signals;
 use decision::decide;
 use states::GameState;
 
+use crate::highlights::colors::CYAN;
 use crate::memory::BotMemory;
 
 use crate::highlights::Highlighter;
@@ -55,10 +56,10 @@ fn main() {
             eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
         }
 
-        memory.update(&state);
-
         // Debugging: Path highlighten
         let mut highlights = Highlighter::new();
+
+        memory.update(&state, &mut highlights);
         
         let dir = decide(&state, &mut memory, &mut highlights);
 

@@ -1,4 +1,5 @@
 // Feld fürs highlighten
+use std::collections::HashSet;
 
 use serde_json::{json, Value};
 
@@ -20,6 +21,12 @@ impl Highlighter {
 
     pub fn add_path(&mut self, path: Vec<[i32; 2]>, color: &str) {
         for pos in path {
+            self.add_point(pos, color);
+        }
+    }
+
+    pub fn add_path_hashset(&mut self, path: &HashSet<[i32; 2]>, color: &str) {
+        for &pos in path.iter() {
             self.add_point(pos, color);
         }
     }
@@ -51,10 +58,13 @@ impl Highlighter {
 pub mod colors {
     pub const RED: &str = "#ff0000";
     pub const GREEN: &str = "#00ff00";
+    pub const DARK_GREEN: &str = "#229022";
     pub const BLUE: &str = "#0000ff";
     pub const YELLOW: &str = "#ffff00";
     pub const PURPLE: &str = "#ff00ff";
     pub const CYAN: &str = "#00ffff";
     pub const ORANGE: &str = "#ff8800";
     pub const WHITE: &str = "#ffffff";
+    pub const BLACK: &str = "#000000";
+    pub const LIGHT_GREY: &str = "#D3D3D3";
 }

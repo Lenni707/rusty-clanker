@@ -1,4 +1,5 @@
 use std::mem;
+use std::sync::Arc;
 use std::{
     collections::HashSet,
     i32,
@@ -51,7 +52,7 @@ pub fn decide(
         t
     }
     else if let Some(t) = memory.get_signal_target(state.bot) {
-        highlights.add_point(t, colors::BLUE);
+        highlights.add_point(t, colors::PURPLE);
         t
     }
     else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
@@ -129,11 +130,11 @@ pub fn decide(
 
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
-                colors::RED
+                colors::RED // path bei gem
             } else if memory.signal_target.is_some() {
-                colors::BLUE
+                colors::PURPLE // path bei signal
             } else {
-                colors::GREEN
+                colors::GREEN // path bei explore
             };
             highlights.add_path(path, path_color);
             

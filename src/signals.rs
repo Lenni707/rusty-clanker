@@ -42,54 +42,6 @@ impl SignalSolver {
         self.measurements.clear();
     }
     
-    // ACHTUNG!!:
-    // smarte sache:
-    // assumpted jede position erstmal als wall oder als "unreachable", benutzt dann Flood fill, um die reachable positionen auszuweiten
-    // der flood fill stoppt bei known_walls
-    // genutzt um freie positionen zu finden, weil known walls nur die äußerste wand von großen wand blöckebn beeinhaltet
-    fn get_reachable_positions(&self, known_walls: &HashSet<Pos>) -> HashSet<Pos> {
-        let mut reachable = HashSet::new();
-        let mut stack = vec![self.bot_pos];
-        
-        while let Some(current) = stack.pop() {
-            if reachable.contains(&current) {
-                continue;
-            }
-            
-            // wenn es eine known wall ist skippen
-            if known_walls.contains(&current) {
-                continue;
-            }
-            
-            // wird dann reachable
-            reachable.insert(current);
-            
-            // versuchen alles nachbarn des feldes zu flodden
-            let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-            for dir in &directions {
-                let next = [current[0] + dir[0], current[1] + dir[1]];
-                
-                // ob es noch in bounds ist
-                if next[0] < 0 || next[0] >= self.width || 
-                   next[1] < 0 || next[1] >= self.height {
-                    continue;
-                }
-                
-                // nicht flodden wenn wand
-                if known_walls.contains(&next) {
-                    continue;
-                }
-                
-                // wenn noch nicht visited zu staxk pushen (eig unnötig weil oben schon gecjhecjkt wird)
-                if !reachable.contains(&next) {
-                    stack.push(next);
-                }
-            }
-        }
-        
-        reachable
-    }
-    
     // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
     fn rate_position(&self, gem_positions: &[Pos]) -> f32 {
         let mut total_error = 0.0;
@@ -111,8 +63,6 @@ impl SignalSolver {
             return None;
         }
 
-        let reachable = self.get_reachable_positions(known_walls);
-
         let mut best_score = 0.0;
         let mut best_pos = None;
 
@@ -121,10 +71,6 @@ impl SignalSolver {
                 let pos = [x, y];
 
                 if known_walls.contains(&pos) || vis_floors.contains(&pos) {
-                    continue;
-                }
-
-                if !reachable.contains(&pos) {
                     continue;
                 }
 
@@ -144,8 +90,6 @@ impl SignalSolver {
             return None;
         }
 
-        let reachable = self.get_reachable_positions(known_walls);
-
         let step = 5;
         let mut best_score = 0.0;
         let mut best_pos = None;
@@ -156,21 +100,13 @@ impl SignalSolver {
                 if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
                     continue;
                 }
-
-                if !reachable.contains(&pos1) {
-                    continue;
-                }   
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
                         let pos2 = [x2, y2];
                         if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
                             continue;
-                        }
-
-                        if !reachable.contains(&pos2) {
-                            continue;
-                        }       
+                        }    
                         
                         let score = self.rate_position(&[pos1, pos2]);
                         if score > best_score {
@@ -183,7 +119,7 @@ impl SignalSolver {
         }
         
         if let Some((coarse1, coarse2)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2], vis_floors, &reachable)
+            self.refine_positions(vec![coarse1, coarse2], vis_floors, known_walls)
                 .map(|v| (v[0], v[1]))
         } else {
             None
@@ -194,8 +130,6 @@ impl SignalSolver {
         if self.measurements.is_empty() {
             return None;
         }
-
-        let reachable = self.get_reachable_positions(known_walls);
         
         let step = 6;
         let mut best_score = 0.0;
@@ -207,10 +141,6 @@ impl SignalSolver {
                 if known_walls.contains(&pos1) || vis_floors.contains(&pos1) {
                     continue;
                 }
-
-                if !reachable.contains(&pos1) {
-                    continue;
-                }   
                 
                 for x2 in (0..self.width).step_by(step) {
                     for y2 in (0..self.height).step_by(step) {
@@ -218,21 +148,13 @@ impl SignalSolver {
                         if known_walls.contains(&pos2) || vis_floors.contains(&pos2) {
                             continue;
                         }
-
-                        if !reachable.contains(&pos2) {
-                            continue;
-                        }   
                         
                         for x3 in (0..self.width).step_by(step) {
                             for y3 in (0..self.height).step_by(step) {
                                 let pos3 = [x3, y3];
                                 if known_walls.contains(&pos3) || vis_floors.contains(&pos3) {
                                     continue;
-                                }
-
-                                if !reachable.contains(&pos3) {
-                                    continue;
-                                }   
+                                }  
                                 
                                 let score = self.rate_position(&[pos1, pos2, pos3]);
                                 if score > best_score {
@@ -247,7 +169,7 @@ impl SignalSolver {
         }
         
         if let Some((coarse1, coarse2, coarse3)) = best_pos {
-            self.refine_positions(vec![coarse1, coarse2, coarse3], vis_floors, &reachable)
+            self.refine_positions(vec![coarse1, coarse2, coarse3], vis_floors, known_walls)
                 .map(|v| (v[0], v[1], v[2]))
         } else {
             None
@@ -300,7 +222,7 @@ impl SignalSolver {
     //     Some(positions)
     // }
 
-    fn refine_positions(&self, mut positions: Vec<Pos>, vis_floors: &Vec<Pos>, reachable: &HashSet<Pos>) -> Option<Vec<Pos>> {
+    fn refine_positions(&self, mut positions: Vec<Pos>, vis_floors: &Vec<Pos>, known_walls: &HashSet<Pos>) -> Option<Vec<Pos>> {
         let mut best_score = self.rate_position(&positions);
         let max_refinement_iterations = 1000;
         let mut iteration = 0;
@@ -322,7 +244,7 @@ impl SignalSolver {
                 for dir in &directions {
                     let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
                     
-                    if vis_floors.contains(&new_pos) || !reachable.contains(&new_pos) { // new_pos[0] < 0 || new_pos[0] >= self.width || new_pos[1] < 0 || new_pos[1] >= self.height || known_walls.contains(&new_pos) || 
+                    if vis_floors.contains(&new_pos) || known_walls.contains(&new_pos) { // new_pos[0] < 0 || new_pos[0] >= self.width || new_pos[1] < 0 || new_pos[1] >= self.height || known_walls.contains(&new_pos) || 
                         continue;
                     }
                     
