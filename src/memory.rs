@@ -162,8 +162,6 @@ impl BotMemory {
 
         self.signal_solver.bot_pos = state.bot;
 
-        self.signal_solver.known_walls = self.known_walls.clone(); // ich hasse clone omg
-
         if state.signal_level > 0.0 {
             self.ticks_since_last_signal = 0;
             self.signal_solver.add_measurement(&state.channels, state.bot);
@@ -203,6 +201,8 @@ impl BotMemory {
         for wall_pos in &state.wall {
             self.known_walls.insert(*wall_pos);
         }
+
+        self.signal_solver.known_walls = self.known_walls.clone(); // ich hasse clone omg // für signal solver
 
         for pos in self.get_reachable_positions(state) {
             self.reachable_positions.insert(pos);
