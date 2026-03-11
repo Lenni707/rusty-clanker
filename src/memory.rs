@@ -146,8 +146,24 @@ impl BotMemory {
         }
         walls
     }
+    fn add_outside_walls(&mut self, state: &GameState, highlights: &mut Highlighter) {
+        for x in 0..=self.config.width {
+            for y in 0..self.config.height {
+                if x == 0 || x == self.config.width - 1{
+                    self.known_walls.insert([x, y]);
+                }
+                if y == 0 || y == self.config.height - 1 {
+                    self.known_walls.insert([x, y]);
+                }
+            }
+        }
+    }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState, highlights: &mut Highlighter) {
+        // Nur im ersten Tick
+        if state.tick == 1 {
+            // self.add_outside_walls(state, highlights); // TODO: wenn ich das mache verlieren wir ca. 5000 Punkte?
+        }
         // Signal Solver Intitialisieren, sobald die config verfügbar ist
         if state.tick == 1 && self.config.width > 0 {
             self.signal_solver = SignalSolver::new(

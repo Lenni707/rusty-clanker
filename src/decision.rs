@@ -1,5 +1,4 @@
 use std::mem;
-use std::sync::Arc;
 use std::{
     collections::HashSet,
     i32,
@@ -119,9 +118,9 @@ pub fn decide(
             let path_color = if memory.get_target().is_some() {
                 colors::RED // path bei gem
             } else if memory.exploration_target.is_some() {
-                colors::GREEN // path bei signal
+                colors::GREEN // path bei explore
             } else {
-                colors::PURPLE // path bei explore
+                colors::PURPLE // path bei signal
             };
             highlights.add_path(path, path_color);
             
