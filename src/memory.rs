@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 use std::collections::VecDeque; // iwie effiezient oder so ka
-use crate::states::GameState;
+use crate::states::{GameState, Config};
 
 use crate::helper_func::{get_dist, Pos};
 
@@ -19,15 +19,6 @@ pub struct BotMemory {
     pub recent_positions: VecDeque<Pos>,
 
     pub signal: SignalStats,
-}
-
-pub struct Config {
-    pub width: i32,
-    pub height: i32,
-    pub vis_radius: i32,
-    pub max_ticks: u32,
-    pub gem_ttl: u32,
-    pub signal_radius: f32,
 }
 
 pub struct SignalStats {
@@ -49,19 +40,6 @@ pub struct GemMemory {
 pub struct PositionMemory {
     pub last_seen_tick: u32,
     pub vis_floor_count: usize,
-}
-
-impl Config {
-    pub fn new() -> Self {
-        Config {
-            width: 0,
-            height: 0,
-            vis_radius: 0,
-            max_ticks: 0,
-            gem_ttl: 0,
-            signal_radius: 0.0,
-        }
-    }
 }
 
 impl SignalStats {
