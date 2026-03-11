@@ -1,4 +1,4 @@
-use crate::states::GameState;
+use crate::states::{GameState, Config};
 use std::collections::VecDeque; // iwie effiezient oder so ka
 use std::collections::{BTreeMap, HashSet};
 
@@ -21,15 +21,6 @@ pub struct BotMemory {
     pub recent_positions: VecDeque<Pos>,
 
     pub signal_manager: SignalManager,
-}
-
-pub struct Config {
-    pub width: i32,
-    pub height: i32,
-    pub vis_radius: i32,
-    pub max_ticks: u32,
-    pub gem_ttl: u32,
-    pub signal_radius: f32,
 }
 
 pub struct SignalStats {

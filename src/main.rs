@@ -45,7 +45,7 @@ fn main() {
             }
         };
 
-        // TODO: CONFIG STATT IN GAMESTATE, IN BOT MEMORY SCHREIBEN
+        // TODO: CONFIG STATT IN GAMESTATE, IN BOT MEMORY SCHREIBEN // WIESO IST DAS IMMERNOCH NICHT 11.03
         if let Some(cfg) = &state.config {
             memory.config.width = cfg.width;
             memory.config.height = cfg.height;
@@ -53,6 +53,10 @@ fn main() {
             memory.config.max_ticks = cfg.max_ticks;
             memory.config.gem_ttl = cfg.gem_ttl;
             memory.config.signal_radius = cfg.signal_radius;
+                        memory.config.signal_fade = cfg.signal_fade;
+            memory.config.signal_noise = cfg.signal_noise;
+            memory.config.gem_spawn_rate = cfg.gem_spawn_rate;
+            memory.config.max_gems = cfg.max_gems;
             // memory.config.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst // ne danke abi brauch ich nicht
             eprintln!(
                 "Width: {}, Height: {}",
