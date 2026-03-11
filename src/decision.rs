@@ -60,7 +60,6 @@ pub fn decide(
     // }
     else if let Some(t) = memory.signal_solver.get_signal_target(&memory.known_walls, &state.floor, &state.channels) {
         highlights.add_point(t, colors::CYAN);
-        highlights.add_point([t[0], t[1] + 1], colors::RED);
         t
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
@@ -119,10 +118,10 @@ pub fn decide(
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
                 colors::RED // path bei gem
-            } else if memory.signal_target.is_some() {
-                colors::PURPLE // path bei signal
+            } else if memory.exploration_target.is_some() {
+                colors::GREEN // path bei signal
             } else {
-                colors::GREEN // path bei explore
+                colors::PURPLE // path bei explore
             };
             highlights.add_path(path, path_color);
             
