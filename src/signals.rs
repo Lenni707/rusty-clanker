@@ -132,6 +132,9 @@ impl SignalSolver {
         let mut positions: Vec<Pos> = Vec::new();
 
         for i in 0..channel.len() {
+            if i == 0 {
+                continue;
+            }
             if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
                 positions.push(pos)
             }
