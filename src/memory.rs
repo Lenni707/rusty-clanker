@@ -3,7 +3,7 @@ use std::collections::VecDeque; use crate::astar::{self, astar};
 use crate::explore::has_line_of_sight;
 use crate::highlights::{self, Highlighter, colors};
 // iwie effiezient oder so ka
-use crate::states::GameState;
+use crate::states::{GameState, Config};
 
 use crate::helper_func::{get_dist, Pos};
 use crate::signals::{self, SignalSolver};
@@ -31,15 +31,6 @@ pub struct BotMemory {
     pub ticks_since_last_signal: i32,
 }
 
-pub struct Config {
-    pub width: i32,
-    pub height: i32,
-    pub vis_radius: i32,
-    pub max_ticks: u32,
-    pub gem_ttl: u32,
-    pub signal_radius: f32,
-}
-
 pub struct SignalStats {
     pub signal_target: Option<Pos>,
     pub gem_signal_map: BTreeMap<[i32; 2], f32>,
@@ -59,19 +50,6 @@ pub struct GemMemory {
 pub struct PositionMemory {
     pub last_seen_tick: u32,
     pub vis_floor_count: usize,
-}
-
-impl Config {
-    pub fn new() -> Self {
-        Config {
-            width: 0,
-            height: 0,
-            vis_radius: 0,
-            max_ticks: 0,
-            gem_ttl: 0,
-            signal_radius: 0.0,
-        }
-    }
 }
 
 impl SignalStats {

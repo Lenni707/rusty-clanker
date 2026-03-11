@@ -3,6 +3,19 @@ use crate::astar::astar;
 
 use std::collections::{HashMap, HashSet};
 
+// Meine Idee wie ich das machen würde: 
+// Wir lassen die Grundstuktur hier wie sie ist, wir brauchen ja aber an sich nur noch die "find_single_gem", denn:
+// - Wir haben die channels für jeden Gem. Jeden Frame gehen wir alle channels durch und gucken wie sicher wir uns sind, das wir den 
+//   gem in diesem Channel gefunden haben.
+// - Wir nehmen uns den Gem, bei dem wir uns am sichersten sind und der nah dran ist
+//      - Theoretisch können wir auch noch einen extra check machen mit dem gesamten Signal-level, vielleicht wenn es sehr hoch ist oder so
+// Das einzige was wir eigentlich machen müssen ist einen Filter einbauen, da es ja das signal noise gibt. Wir wissen wie stark das signal noise ist,
+// damit können wir errechnen wie stark das noise ungefiltern sein müsste, und damit ungefähre messungen machen.
+
+// In SigSolcer würde ich measurements zu einem Vec<Pos, Vec<f32>> machen, dann dadurch durchgehen. Das ist eigentlich machbar glaube ich.
+
+// Generell sollten wir aber wenn wir lust haben mal ein bisschen was erneuern, was ist den bitte decide.rs???? Und memory ist auch grauenhaft!
+
 pub struct SignalSolver {
     measurements: Vec<(Pos, f32)>,
     width: i32,
@@ -364,6 +377,10 @@ impl SignalSolver {
             eprintln!("1 gem solution: {:?} with score {:.2}", gem1, score1);
             Some(gem1)
         }
+    }
+
+    pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+        
     }
 
     // find the closest gem

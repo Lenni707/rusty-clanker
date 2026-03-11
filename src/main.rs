@@ -9,6 +9,7 @@ mod helper_func;
 mod astar;
 mod highlights;
 mod signals;
+mod signale_3;
 
 use decision::decide;
 use states::GameState;
@@ -52,6 +53,10 @@ fn main() {
             memory.config.max_ticks = cfg.max_ticks;
             memory.config.gem_ttl = cfg.gem_ttl;
             memory.config.signal_radius = cfg.signal_radius;
+            memory.config.signal_fade = cfg.signal_fade;
+            memory.config.signal_noise = cfg.signal_noise;
+            memory.config.gem_spawn_rate = cfg.gem_spawn_rate;
+            memory.config.max_gems = cfg.max_gems;
             // memory.config.signal_radius = cfg.signal_radius; // Falls du das separat noch brauchst // ne danke abi brauch ich nicht
             eprintln!("Width: {}, Height: {}", memory.config.width, memory.config.height);
         }
