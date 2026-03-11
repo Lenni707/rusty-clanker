@@ -54,29 +54,9 @@ pub fn decide(
     }
     // else if let Some(t) = memory.get_signal_target(state.bot) {
     else if let Some (t) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) {
-        highlights.add_point(t, colors::PURPLE);
+        highlights.add_point(t, colors::CYAN);
+        highlights.add_point([t[0], t[1] + 1], colors::RED);
         t
-    }
-    else if let Some(pos) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) { // TODO: Warum lebt SignalSovler in Memory??
-        // TODO: DAS ALLES IN DIESEM ELSE BLOCK IST GRAUENHAFTTT!!!
-        if astar(state.bot, pos, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
-            // Target not rachable
-            eprintln!("TARGET NOT REACHABLE");
-            return movement_fallback(memory, state, Some(pos)); // changes the target until it is reachable
-        }
-        highlights.add_point(pos, colors::PURPLE);
-        // Check ob das Target Konstant ist:
-        memory.last_signal_targets.push(pos);
-        if memory.last_signal_targets.len() > 5 {
-            memory.last_signal_targets.remove(0);
-        }
-        if memory.last_signal_targets.len() == 2 {
-            let all_same = memory.last_signal_targets.iter().all(|&t| t == pos);
-            if all_same {
-                memory.signal_target = Some(pos);
-            }
-        }
-        pos
     }
     else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
         highlights.add_point(pos, colors::GREEN);

@@ -162,7 +162,7 @@ impl BotMemory {
 
         if state.signal_level > 0.0 {
             self.ticks_since_last_signal = 0;
-            self.signal_solver.add_measurement(state.signal_level, state.bot);
+            self.signal_solver.add_measurement(&state.channels, state.bot);
         } else {
             self.ticks_since_last_signal += 1;
         }

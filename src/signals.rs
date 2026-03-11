@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 // Generell sollten wir aber wenn wir lust haben mal ein bisschen was erneuern, was ist den bitte decide.rs???? Und memory ist auch grauenhaft!
 
 pub struct SignalSolver {
-    measurements: Vec<(Pos, f32)>,
+    measurements: Vec<(Pos, Vec<f32>)>,
     refinded_measurments: Vec<(Pos, Vec<f32>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
     width: i32,
     height: i32,
@@ -36,44 +36,47 @@ impl SignalSolver {
             bot_pos: bot_pos
         }
     }
-    pub fn add_measurement(&mut self, signal_level: f32, pos: Pos) {
+    pub fn add_measurement(&mut self, channels: &Vec<f32>, pos: Pos) {
         if self.measurements.len() > 20 {
             self.measurements.remove(0);
         }
         
-        self.measurements.push((pos, signal_level));
+        self.measurements.push((pos, channels.clone()));
     }
 
     // man eigentlich ist das so geil
-    pub fn update_measurenments(&mut self, target_gem: Pos, radius: f32) {
-        for (bot_pos, signal) in &mut self.measurements {
-            let contrib = signal_from_dist(*bot_pos, target_gem, radius);
-            *signal = (*signal - contrib).max(0.0);
+    //pub fn update_measurenments(&mut self, target_gem: Pos, radius: f32) {
+    //    for (bot_pos, channels) in &mut self.measurements {
+    //        let contrib = signal_from_dist(*bot_pos, target_gem, radius);
+    //        *signal = (*signal - contrib).max(0.0);
 
-        }
-    }
+    //    }
+    //}
 
     pub fn clear_measuremnts(&mut self) {
         self.measurements.clear();
     }
     
     // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
-    fn rate_position(&self, gem_positions: &[Pos]) -> f32 {
-        let mut total_error = 0.0;
+    fn rate_position(&self, gem_positions: &[Pos], channel_num: usize) -> f32 {
         
-        for (bot_pos, signal) in &self.measurements {
+        let mut total_error = 0.0;
+        for (bot_pos, channel) in &self.measurements {
+            let signal = channel[channel_num];
             let mut expected_signal = 0.0;
             for gem_pos in gem_positions {
                 expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
             }
             let error = (expected_signal - signal).abs();
             total_error += error;
+        
+            
         }
         
         1.0 / (0.001 + total_error)
     }
 
-    pub fn find_single_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> {
+    pub fn find_single_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<Pos> {
         if self.measurements.is_empty() {
             return None;
         }
@@ -89,7 +92,7 @@ impl SignalSolver {
                     continue;
                 }
 
-                let score = self.rate_position(&[pos]);
+                let score = self.rate_position(&[pos], channel_num);
                 
                 if score > best_score {
                     best_score = score;
@@ -105,7 +108,7 @@ impl SignalSolver {
     // // immer ein bisschen verbessern => jeden gem um ein bisschen verschieben bis er besser passt (höherer score)
 
     fn refine_positions(&self, mut positions: Vec<Pos>, vis_floors: &Vec<Pos>, known_walls: &HashSet<Pos>) -> Option<Vec<Pos>> {
-        let mut best_score = self.rate_position(&positions);
+        let mut best_score = self.rate_position(&positions, 1);
         let max_refinement_iterations = 1000;
         let mut iteration = 0;
         
@@ -131,7 +134,7 @@ impl SignalSolver {
                     }
                     
                     positions[gem_idx] = new_pos;
-                    let new_score = self.rate_position(&positions);
+                    let new_score = self.rate_position(&positions, 1);
                     
                     if new_score >= local_best_score {
                         local_best_score = new_score;
@@ -162,12 +165,17 @@ impl SignalSolver {
 
     pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> {
         let mut highest_sig: f32 = 0.0;
-        for sig in channels {
-            if sig > &highest_sig {
-                highest_sig = *sig;
+        let mut best_channel: usize = 0;
+        for i in 0..channels.len() {
+            let sig = channels[i];
+            if sig > highest_sig {
+                highest_sig = sig;
+                best_channel = i;
             }
         }
-        let target = self.find_single_gem(known_walls, vis_floors, channels);
+
+        eprintln!("{}", highest_sig);
+        let target = self.find_single_gem(known_walls, vis_floors, best_channel);
         
         target
     }
