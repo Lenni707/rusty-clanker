@@ -57,7 +57,7 @@ pub fn decide(
         highlights.add_point(t, colors::PURPLE);
         t
     }
-    else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) { // TODO: Warum lebt SignalSovler in Memory??
+    else if let Some(pos) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) { // TODO: Warum lebt SignalSovler in Memory??
         // TODO: DAS ALLES IN DIESEM ELSE BLOCK IST GRAUENHAFTTT!!!
         if astar(state.bot, pos, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
             // Target not rachable
