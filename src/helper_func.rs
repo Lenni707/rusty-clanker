@@ -1,3 +1,5 @@
+use std::collections::{HashSet};
+
 use crate::astar::astar;
 use crate::memory::BotMemory;
 
@@ -19,9 +21,11 @@ pub fn euclidean(a: [i32; 2], b: [i32; 2]) -> f32 {
 pub fn get_dist(
     a: [i32; 2],
     b: [i32; 2],
-    memory: &BotMemory,
+    known_walls: &HashSet<Pos>,
+    width: i32,
+    height: i32
 ) -> Option<i32> {
-    let path = astar(a, b, &memory.known_walls, memory.config.width, memory.config.height);
+    let path = astar(a, b, &known_walls, width, height);
 
     let dist = match path {
         Some(path) => Some(path.len() as i32 - 1),

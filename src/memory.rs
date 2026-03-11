@@ -81,7 +81,7 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6]), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6], 0.03, HashSet::new()), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
 
             signal: SignalStats::new(),
             signal_target: None,
@@ -154,11 +154,15 @@ impl BotMemory {
                 self.config.width, 
                 self.config.height, 
                 self.config.signal_radius,
-                [0, 0] // mock value fuck borrow checker
+                [0, 0], // mock value fuck borrow checker
+                self.config.signal_noise,
+                HashSet::new()
             );
         }
 
         self.signal_solver.bot_pos = state.bot;
+
+        self.signal_solver.known_walls = self.known_walls.clone(); // ich hasse clone omg
 
         if state.signal_level > 0.0 {
             self.ticks_since_last_signal = 0;
@@ -347,7 +351,7 @@ impl BotMemory {
         let mut best_dist: i32 = i32::MAX;
 
         for (&gem_pos, gem_mem) in self.known_gems.iter() {
-            let dist = match get_dist(state.bot, gem_pos, self) {
+            let dist = match get_dist(state.bot, gem_pos, &self.known_walls, self.config.width, self.config.height) {
                 Some(d) => d,
                 None => continue, // unreachable gem
             };
@@ -383,8 +387,8 @@ pub fn get_closer_pos(
     b: [i32; 2],
     memory: &BotMemory,
 ) -> Option<[i32; 2]> {
-    let dist_a = get_dist(a, goal, memory);
-    let dist_b = get_dist(b, goal, memory);
+    let dist_a = get_dist(a, goal, &memory.known_walls, memory.config.width, memory.config.height);
+    let dist_b = get_dist(b, goal, &memory.known_walls, memory.config.width, memory.config.height);
 
     match (dist_a, dist_b) {
         (Some(da), Some(db)) => {

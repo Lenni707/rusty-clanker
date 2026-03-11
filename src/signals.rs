@@ -22,18 +22,22 @@ pub struct SignalSolver {
     width: i32,
     height: i32,
     signal_radius: f32,
+    signal_noise: f32,
     pub bot_pos: Pos,
+    pub known_walls: HashSet<Pos>
 }
 
 impl SignalSolver {
-    pub fn new(width: i32, height: i32, signal_radius: f32, bot_pos: Pos) -> Self {
+    pub fn new(width: i32, height: i32, signal_radius: f32, bot_pos: Pos, signal_noise: f32, known_walls: HashSet<Pos>) -> Self {
         SignalSolver {
             width,
             height,
             refinded_measurments: Vec::new(),
             signal_radius,
             measurements: Vec::new(),
-            bot_pos: bot_pos
+            signal_noise,
+            bot_pos: bot_pos,
+            known_walls: known_walls
         }
     }
     pub fn add_measurement(&mut self, channels: &Vec<f32>, pos: Pos) {
@@ -67,6 +71,8 @@ impl SignalSolver {
             for gem_pos in gem_positions {
                 expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
             }
+
+            // Bestimmter Fehler akzeptieren
             let error = (expected_signal - signal).abs();
             total_error += error;
         
@@ -103,64 +109,6 @@ impl SignalSolver {
         
         best_pos
     }
-    
-    
-    // // immer ein bisschen verbessern => jeden gem um ein bisschen verschieben bis er besser passt (höherer score)
-
-    fn refine_positions(&self, mut positions: Vec<Pos>, vis_floors: &Vec<Pos>, known_walls: &HashSet<Pos>) -> Option<Vec<Pos>> {
-        let mut best_score = self.rate_position(&positions, 1);
-        let max_refinement_iterations = 1000;
-        let mut iteration = 0;
-        
-        loop {
-            if iteration >= max_refinement_iterations {
-                break;
-            }
-            
-            iteration += 1;
-            let mut any_improvement = false;
-            
-            for gem_idx in 0..positions.len() {
-                let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-                let old_pos = positions[gem_idx];
-                let mut local_best_score = best_score;
-                let mut local_best_pos = old_pos;
-                
-                for dir in &directions {
-                    let new_pos = [old_pos[0] + dir[0], old_pos[1] + dir[1]];
-                    
-                    if vis_floors.contains(&new_pos) || known_walls.contains(&new_pos) { // new_pos[0] < 0 || new_pos[0] >= self.width || new_pos[1] < 0 || new_pos[1] >= self.height || known_walls.contains(&new_pos) || 
-                        continue;
-                    }
-                    
-                    positions[gem_idx] = new_pos;
-                    let new_score = self.rate_position(&positions, 1);
-                    
-                    if new_score >= local_best_score {
-                        local_best_score = new_score;
-                        local_best_pos = new_pos;
-                    }
-                    
-                    positions[gem_idx] = old_pos;
-                }
-                
-                // apply best move
-                if local_best_pos != old_pos {
-                    positions[gem_idx] = local_best_pos;
-                    best_score = local_best_score;  // Update global best
-                    any_improvement = true;
-                }
-            }
-            
-            // Stop if no gem improved in this iteration
-            if !any_improvement {
-                eprintln!("refining stopped after {} iterations with score {:.2}", iteration, best_score);
-                break;
-            }
-        }
-        
-        Some(positions)
-    }
 
 
     pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> {
@@ -180,20 +128,27 @@ impl SignalSolver {
         target
     }
 
-    // find the closest gem
-    fn get_closest_gem(&self, gems: &[Pos]) -> Pos {
-        if let Some((last_bot_pos, _)) = self.measurements.last() {
-            gems.iter()
-                .min_by_key(|gem| {
-                    let dx = gem[0] - last_bot_pos[0];
-                    let dy = gem[1] - last_bot_pos[1];
-                    dx * dx + dy * dy
-                })
-                .copied()
-                .unwrap_or(gems[0])
-        } else {
-            gems[0]
+    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel: &Vec<f32>) -> Option<Pos> {
+        let mut positions: Vec<Pos> = Vec::new();
+
+        for i in 0..channel.len() {
+            if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
+                positions.push(pos)
+            }
         }
+
+        let mut best_dist: i32 = 0;
+        let mut best: Pos = [0, 0];
+
+        for i in positions {
+            if let Some(dist) = get_dist(i, self.bot_pos, &self.known_walls, self.width, self.height) {
+                if dist > best_dist {
+                    best_dist = dist;
+                    best = i;
+                }
+            }
+        }
+        Some(best)
     }
 }
 
