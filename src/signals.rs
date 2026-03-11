@@ -380,7 +380,7 @@ impl SignalSolver {
     }
 
     pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
-        
+        None
     }
 
     // find the closest gem
