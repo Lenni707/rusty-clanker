@@ -202,8 +202,6 @@ impl BotMemory {
             self.known_walls.insert(*wall_pos);
         }
 
-        self.signal_solver.known_walls = self.known_walls.clone(); // ich hasse clone omg // für signal solver
-
         for pos in self.get_reachable_positions(state) {
             self.reachable_positions.insert(pos);
         }
@@ -211,6 +209,8 @@ impl BotMemory {
         for pos in self.get_wall_positions(state) { // insert calculated hidden walls into known walls
             self.known_walls.insert(pos);
         }
+
+        self.signal_solver.known_walls = self.known_walls.clone(); // ich hasse clone omg // für signal solver
 
         highlights.add_path_hashset(&self.known_walls, colors::LIGHT_GREY); // markiert alle known walls
 
