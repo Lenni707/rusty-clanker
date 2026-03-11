@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 
 pub struct SignalSolver {
     measurements: Vec<(Pos, f32)>,
+    refinded_measurments: Vec<(Pos, Vec<f32>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
     width: i32,
     height: i32,
     signal_radius: f32,
@@ -29,6 +30,7 @@ impl SignalSolver {
         SignalSolver {
             width,
             height,
+            refinded_measurments: Vec::new(),
             signal_radius,
             measurements: Vec::new(),
             bot_pos: bot_pos
