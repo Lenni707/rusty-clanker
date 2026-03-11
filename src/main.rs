@@ -9,7 +9,6 @@ mod helper_func;
 mod astar;
 mod highlights;
 mod signals;
-mod signale_3;
 
 use decision::decide;
 use states::GameState;

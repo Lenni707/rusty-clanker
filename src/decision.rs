@@ -5,8 +5,9 @@ use std::{
     i32,
 };
 
+use crate::signals::SignalSolver;
 use crate::{memory::BotMemory, states::GameState};
-use crate::explore::*;
+use crate::{explore::*, signals};
 
 use crate::astar::astar;
 use crate::helper_func::*;
@@ -51,11 +52,13 @@ pub fn decide(
         memory.signal.ticks_since_signal_up = 0;
         t
     }
-    else if let Some(t) = memory.get_signal_target(state.bot) {
+    // else if let Some(t) = memory.get_signal_target(state.bot) {
+    else if let Some (t) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) {
         highlights.add_point(t, colors::PURPLE);
         t
     }
-    else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) {
+    else if let Some(pos) = memory.signal_solver.get_target(&memory.known_walls, &state.floor) { // TODO: Warum lebt SignalSovler in Memory??
+        // TODO: DAS ALLES IN DIESEM ELSE BLOCK IST GRAUENHAFTTT!!!
         if astar(state.bot, pos, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
             // Target not rachable
             eprintln!("TARGET NOT REACHABLE");
@@ -64,7 +67,7 @@ pub fn decide(
         highlights.add_point(pos, colors::PURPLE);
         // Check ob das Target Konstant ist:
         memory.last_signal_targets.push(pos);
-        if memory.last_signal_targets.len() > 2 {
+        if memory.last_signal_targets.len() > 5 {
             memory.last_signal_targets.remove(0);
         }
         if memory.last_signal_targets.len() == 2 {

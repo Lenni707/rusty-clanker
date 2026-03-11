@@ -22,7 +22,7 @@ pub struct SignalSolver {
     width: i32,
     height: i32,
     signal_radius: f32,
-    pub bot_pos:Pos
+    pub bot_pos: Pos,
 }
 
 impl SignalSolver {
@@ -381,7 +381,11 @@ impl SignalSolver {
         }
     }
 
-    pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>) -> Option<Pos> {
+    pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> {
+        //if let Some(cloest_gem) = channels.iter().cloned().fold(f32::NEG_INFINITY, f32::max) {
+            
+        //}
+        
         None
     }
 
