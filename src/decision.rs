@@ -58,7 +58,7 @@ pub fn decide(
     //     highlights.add_point([t[0], t[1] + 1], colors::RED);
     //     t
     // }
-    else if let Some(t) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) {
+    else if let Some(t) = memory.signal_solver.get_signal_target(&memory.known_walls, &state.floor, &state.channels) {
         highlights.add_point(t, colors::CYAN);
         highlights.add_point([t[0], t[1] + 1], colors::RED);
         t

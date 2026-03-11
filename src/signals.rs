@@ -110,23 +110,22 @@ impl SignalSolver {
         best_pos
     }
 
+    // pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> { // outdated
+    //     let mut highest_sig: f32 = 0.0;
+    //     let mut best_channel: usize = 0;
+    //     for i in 0..channels.len() {
+    //         let sig = channels[i];
+    //         if sig > highest_sig {
+    //             highest_sig = sig;
+    //             best_channel = i;
+    //         }
+    //     }
 
-    pub fn get_test_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &Vec<f32>) -> Option<Pos> {
-        let mut highest_sig: f32 = 0.0;
-        let mut best_channel: usize = 0;
-        for i in 0..channels.len() {
-            let sig = channels[i];
-            if sig > highest_sig {
-                highest_sig = sig;
-                best_channel = i;
-            }
-        }
-
-        eprintln!("{}", highest_sig);
-        let target = self.find_single_gem(known_walls, vis_floors, best_channel);
+    //     eprintln!("{}", highest_sig);
+    //     let target = self.find_single_gem(known_walls, vis_floors, best_channel);
         
-        target
-    }
+    //     target
+    // }
 
     pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel: &Vec<f32>) -> Option<Pos> {
         let mut positions: Vec<Pos> = Vec::new();
@@ -140,18 +139,18 @@ impl SignalSolver {
             }
         }
 
-        let mut best_dist: i32 = 0;
-        let mut best: Pos = [0, 0];
+        let mut best_dist: i32 = i32::MAX;
+        let mut best: Option<Pos> = None;
 
         for i in positions {
             if let Some(dist) = get_dist(i, self.bot_pos, &self.known_walls, self.width, self.height) {
-                if dist > best_dist {
+                if dist < best_dist {
                     best_dist = dist;
-                    best = i;
+                    best = Some(i);
                 }
             }
         }
-        Some(best)
+        best
     }
 }
 
