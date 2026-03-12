@@ -213,9 +213,9 @@ impl BotMemory {
         for (index, info) in &mut self.channels {
             if info.age > 0 && (info.age as f32) < fade {
                 let fade_fraction = info.age as f32 / fade;
-                let corrected_sample = info.signal / fade_fraction; // denoise this tick's reading
+                let corrected_sample = info.signal / fade_fraction; // das "true" signal
 
-                // running average of all corrected samples so far
+                // averages für alle samples von davor um error auszubalancieren
                 let prev_sum = if let Some(prev) = self.prev_channels.get(index) {
                     prev.added_fade_impact
                 } else {
@@ -223,7 +223,7 @@ impl BotMemory {
                 };
 
                 info.added_fade_impact = prev_sum + corrected_sample;
-                info.signal = info.added_fade_impact / info.age as f32;
+                info.signal = info.added_fade_impact / info.age as f32; // der durchschnitt
             }
         }
     }
