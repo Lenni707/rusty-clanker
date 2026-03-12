@@ -207,7 +207,7 @@ impl BotMemory {
     //         }
     //     }
     // } 
-    fn calc_fade_impact(&mut self) {
+    fn calc_fade_impact(&mut self) { // ok die funktion macht es gerade um 8k schlechter idk why
         let fade = self.config.signal_fade as f32;
 
         for (index, info) in &mut self.channels {
@@ -247,7 +247,7 @@ impl BotMemory {
 
         self.attach_age_to_channels(state);
 
-        self.calc_fade_impact();
+        // self.calc_fade_impact();
 
         self.signal_solver.bot_pos = state.bot;
 
