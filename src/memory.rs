@@ -247,12 +247,12 @@ impl BotMemory {
 
         self.attach_age_to_channels(state);
 
-        // if let Some(gem_idx) = self.signal_solver.get_index_of_collected_gem() {
-        //     if state.tick > 10 {
-        //         self.signal_solver.clear_channel_measurement_by_index(gem_idx);
-        //         eprintln!("Clearing channel {}", gem_idx)
-        //     }
-        // }
+        if let Some(gem_idx) = self.signal_solver.get_index_of_collected_gem() {
+            if state.tick > 10 {
+                self.signal_solver.clear_channel_measurement_by_index(gem_idx);
+                eprintln!("Clearing channel {}", gem_idx)
+            }
+        }
 
         // self.calc_fade_impact();
 
