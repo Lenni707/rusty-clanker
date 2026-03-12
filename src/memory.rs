@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::collections::VecDeque; use crate::astar::{self, astar};
 use crate::explore::has_line_of_sight;
 use crate::highlights::{self, Highlighter, colors};
@@ -24,6 +24,8 @@ pub struct BotMemory {
     pub recent_positions: VecDeque<Pos>,
 
     pub signal_solver: SignalSolver,
+    pub channels: BTreeMap<u32, ChannelInfo>,
+    pub prev_channels: BTreeMap<u32, ChannelInfo>,
 
     pub signal: SignalStats,
     pub signal_target: Option<Pos>,
@@ -50,6 +52,12 @@ pub struct GemMemory {
 pub struct PositionMemory {
     pub last_seen_tick: u32,
     pub vis_floor_count: usize,
+}
+
+#[derive(Clone)]
+pub struct ChannelInfo {
+    pub signal: f32,
+    pub age: u32,
 }
 
 impl SignalStats {
@@ -82,6 +90,8 @@ impl BotMemory {
             recent_positions: VecDeque::new(),
 
             signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6], 0.03, HashSet::new()), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+            channels: BTreeMap::new(),
+            prev_channels: BTreeMap::new(),
 
             signal: SignalStats::new(),
             signal_target: None,
@@ -158,6 +168,22 @@ impl BotMemory {
             }
         }
     }
+    fn attach_age_to_channels(&mut self, state: &GameState) {
+        self.prev_channels = self.channels.clone();
+        self.channels.clear();
+
+        for (i, &val) in state.channels.iter().enumerate() {
+            let age = if val != 0.0 {
+                match self.prev_channels.get(&(i as u32)) { // ich bin geeil und habe divine interlect
+                    Some(info) => info.age + 1,
+                    None => 1,
+                }
+            } else {
+                0
+            };
+            self.channels.insert(i as u32, ChannelInfo { signal: val, age });
+        }
+    }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState, highlights: &mut Highlighter) {
         // Nur im ersten Tick
@@ -175,6 +201,8 @@ impl BotMemory {
                 HashSet::new()
             );
         }
+
+        self.attach_age_to_channels(state);
 
         self.signal_solver.bot_pos = state.bot;
 
