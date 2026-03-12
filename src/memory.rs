@@ -58,6 +58,7 @@ pub struct PositionMemory {
 pub struct ChannelInfo {
     pub signal: f32,
     pub age: u32,
+    pub added_fade_impact: f32,
 }
 
 impl SignalStats {
@@ -168,7 +169,7 @@ impl BotMemory {
             }
         }
     }
-    fn attach_age_to_channels(&mut self, state: &GameState) {
+    fn attach_age_to_channels(&mut self, state: &GameState) { // auch wieder so eine geile funktion, wandelt den vektor von channels in eine hashmap von channels um
         self.prev_channels = self.channels.clone();
         self.channels.clear();
 
@@ -181,16 +182,22 @@ impl BotMemory {
             } else {
                 0
             };
-            self.channels.insert(i as u32, ChannelInfo { signal: val, age });
+            self.channels.insert(i as u32, ChannelInfo { signal: val, age, added_fade_impact: 0.0 });
         }
     }
-    fn calc_fade_impact(&mut self) {
+    // diese ultimative funktion soll den signal fade in den ersetn signal_fade ticks ausgleichen. Dazu nimmt es denn durschnitt um den einfluss des random errors zu minimieren
+    fn calc_fade_impact(&mut self) { // also entweder habe ich divine interlect und claude kann ich sich verpieseln weil ich das tuff selber geschrieben habe oder es worked halt nicht
         let fade = self.config.signal_fade as u32;
 
-        for (index, info) in &self.channels {
-            if info.age < fade {
-                let increase = info.signal - self.prev_channels.get(index);
-                let new_val = increase
+        for (index, info) in &mut self.channels {
+            if info.age < fade && info.age > 0 {
+                if let Some(prev_channel) = self.prev_channels.get(index) {
+                    let increase = info.signal - prev_channel.signal;
+                    let new_val = increase * (fade - info.age) as f32;
+                    info.added_fade_impact += new_val;
+                    let updated_val = info.added_fade_impact / info.age as f32;
+                    info.signal = updated_val;
+                }
             }
         }
     } 
@@ -213,6 +220,8 @@ impl BotMemory {
         }
 
         self.attach_age_to_channels(state);
+
+        self.calc_fade_impact();
 
         self.signal_solver.bot_pos = state.bot;
 
