@@ -249,7 +249,7 @@ impl BotMemory {
 
         // self.calc_fade_impact();
 
-        eprintln!("{:?}", &self.channels.get(&0).unwrap().signal);
+        // eprintln!("{:?}", &self.channels.get(&0).unwrap().signal);
 
         self.signal_solver.bot_pos = state.bot;
 

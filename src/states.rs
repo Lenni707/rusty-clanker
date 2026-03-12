@@ -20,7 +20,7 @@ pub struct Config {
     pub vis_radius: i32,
     pub max_ticks: u32,
     pub max_gems: u32,
-    pub gem_spawn_rate: f32, // TODO: einbauen, wie viele gems wahrscheinlich da sind?
+    pub gem_spawn_rate: f32,
     pub gem_ttl: u32,
     pub signal_radius: f32,
     pub signal_fade: f32,

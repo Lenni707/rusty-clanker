@@ -16,10 +16,13 @@ use crate::memory::ChannelInfo;
 // In SigSolcer würde ich measurements zu einem Vec<Pos, Vec<f32>> machen, dann dadurch durchgehen. Das ist eigentlich machbar glaube ich.
 
 // Generell sollten wir aber wenn wir lust haben mal ein bisschen was erneuern, was ist den bitte decide.rs???? Und memory ist auch grauenhaft!
-
+// as wahre Recht. Man darf dieser Partei nicht nger dabel zusehen, wie sie die Demokratie von ihr übrigist.
+// so lange für sich vereinnahmt, bis nichts mehr
+// Eva Ricarda Lautsch, Ein Verbot der AfD ist überfallig, in: https://www.zeit.de/politik/deutschland/2024-10/ afd-verbot-verfahren-demokratie-gefahr, 15.10.2024
 pub struct SignalSolver {
-    measurements: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>,
+    measurements: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>, // usize ist der index des channels, bist erlergisch gegen Kommentare oderß
     refinded_measurments: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
+    guesses_for_channels: Vec<Option<(Pos, f32)>>, // die Position und einen confidence Wert, wie sicher der Gem da ist.
     width: i32,
     height: i32,
     signal_radius: f32,
@@ -34,6 +37,7 @@ impl SignalSolver {
             width,
             height,
             refinded_measurments: Vec::new(),
+            guesses_for_channels: Vec::new(),
             signal_radius,
             measurements: Vec::new(),
             signal_noise,
@@ -42,7 +46,7 @@ impl SignalSolver {
         }
     }
     pub fn add_measurement(&mut self, channels: BTreeMap<usize, ChannelInfo>, pos: Pos) {
-        if self.measurements.len() > 25 {
+        if self.measurements.len() > 25 { // TODO: Diese Nummer ausprobieren was am besten ist.
             self.measurements.remove(0);
         }
         
@@ -67,7 +71,7 @@ impl SignalSolver {
         
         let mut total_error = 0.0;
         for (bot_pos, channel) in &self.measurements {
-            if let Some(real_channel) = channel.get(&channel_num) {
+            if let Some(real_channel) = channel.get(&channel_num) { // bro was ist ein real_channel?? das ist die channel info!
                 let signal = real_channel.signal;
                 let mut expected_signal = 0.0;
                 for gem_pos in gem_positions {
@@ -131,7 +135,7 @@ impl SignalSolver {
     pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<Pos> {
         let mut positions: Vec<Pos> = Vec::new();
 
-        for i in 0..channels.len() {
+        for i in 0..=channels.len() {
             if let Some(channel) = channels.get(&i) {
                 if channel.signal == 0.0 {
                     continue;
@@ -155,6 +159,51 @@ impl SignalSolver {
             }
         }
         best
+    }
+
+
+    fn find_single_gem_with_confidence(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<Pos> {
+        if self.measurements.is_empty() {
+            return None;
+        }
+        let mut scores: Vec<(Pos, f32)> = Vec::new();
+
+        let mut best_score = 0.0;
+        let mut best_pos = None;
+
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let pos = [x, y];
+
+                if known_walls.contains(&pos) || vis_floors.contains(&pos) {
+                    continue;
+                }
+
+                let score = self.rate_position(&[pos], channel_num);
+                
+                if score > best_score {
+                    best_score = score;
+                    best_pos = Some(pos);
+                }
+            }
+        }
+        
+        let confidence = (best_score / 100.0).tanh().clamp(0.0, 1.0);
+        eprintln!("raw best_score: {}", confidence);
+        
+        best_pos
+    }
+    // Erstmal nur Test; Idee, das jeden Tick für jeden aktiven Channel ausgerechnet wird wo 
+    pub fn guess_all_positions(&mut self, channels: &BTreeMap<usize, ChannelInfo>, vis_floors: &Vec<Pos>) {
+        for i in 0..=channels.len() {
+            let channel_info = &channels[&i];
+            if channel_info.signal == 0. {
+                self.guesses_for_channels[i] = None;
+                continue;
+            }
+            let pos = self.find_single_gem(&self.known_walls, vis_floors, i);
+            let confidence = 0;
+        }
     }
 }
 
