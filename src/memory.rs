@@ -210,14 +210,20 @@ impl BotMemory {
     fn calc_fade_impact(&mut self) {
         let fade = self.config.signal_fade as f32;
 
-        for (_index, info) in &mut self.channels {
+        for (index, info) in &mut self.channels {
             if info.age > 0 && (info.age as f32) < fade {
-                // During fade-in: observed signal ≈ true_signal * (age / fade)
-                // So: true_signal ≈ observed * (fade / age)
                 let fade_fraction = info.age as f32 / fade;
-                if fade_fraction > 0.0 {
-                    info.signal = info.signal / fade_fraction;
-                }
+                let corrected_sample = info.signal / fade_fraction; // denoise this tick's reading
+
+                // running average of all corrected samples so far
+                let prev_sum = if let Some(prev) = self.prev_channels.get(index) {
+                    prev.added_fade_impact
+                } else {
+                    0.0
+                };
+
+                info.added_fade_impact = prev_sum + corrected_sample;
+                info.signal = info.added_fade_impact / info.age as f32;
             }
         }
     }
