@@ -24,8 +24,8 @@ pub struct BotMemory {
     pub recent_positions: VecDeque<Pos>,
 
     pub signal_solver: SignalSolver,
-    pub channels: BTreeMap<u32, ChannelInfo>,
-    pub prev_channels: BTreeMap<u32, ChannelInfo>,
+    pub channels: BTreeMap<usize, ChannelInfo>,
+    pub prev_channels: BTreeMap<usize, ChannelInfo>,
 
     pub signal: SignalStats,
     pub signal_target: Option<Pos>,
@@ -57,7 +57,7 @@ pub struct PositionMemory {
 #[derive(Clone)]
 pub struct ChannelInfo {
     pub signal: f32,
-    pub age: u32,
+    pub age: usize,
     pub added_fade_impact: f32,
 }
 
@@ -175,19 +175,25 @@ impl BotMemory {
 
         for (i, &val) in state.channels.iter().enumerate() {
             let age = if val != 0.0 {
-                match self.prev_channels.get(&(i as u32)) { // ich bin geeil und habe divine interlect
+                match self.prev_channels.get(&i) { // ich bin geeil und habe divine interlect
                     Some(info) => info.age + 1,
-                    None => 1,
+                    None => 1, // safety net
                 }
             } else {
                 0
             };
-            self.channels.insert(i as u32, ChannelInfo { signal: val, age, added_fade_impact: 0.0 });
+            let mut added_fade_impact = 0.0;
+            if val != 0.0 {
+                if let Some(prev_channel) = self.prev_channels.get(&i){
+                    added_fade_impact = prev_channel.added_fade_impact;
+                }
+            }
+            self.channels.insert(i, ChannelInfo { signal: val, age, added_fade_impact});
         }
     }
     // diese ultimative funktion soll den signal fade in den ersetn signal_fade ticks ausgleichen. Dazu nimmt es denn durschnitt um den einfluss des random errors zu minimieren
     fn calc_fade_impact(&mut self) { // also entweder habe ich divine interlect und claude kann ich sich verpieseln weil ich das tuff selber geschrieben habe oder es worked halt nicht
-        let fade = self.config.signal_fade as u32;
+        let fade = self.config.signal_fade as usize;
 
         for (index, info) in &mut self.channels {
             if info.age < fade && info.age > 0 {
@@ -227,7 +233,7 @@ impl BotMemory {
 
         if state.signal_level > 0.0 {
             self.ticks_since_last_signal = 0;
-            self.signal_solver.add_measurement(&state.channels, state.bot);
+            self.signal_solver.add_measurement(self.channels.clone(), state.bot); // warum schon wieder clone omg das ist so arsch aber mir fällt nichts ein
         } else {
             self.ticks_since_last_signal += 1;
         }

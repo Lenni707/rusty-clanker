@@ -1,7 +1,8 @@
 use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
 use crate::astar::astar;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::memory::ChannelInfo;
 
 // Meine Idee wie ich das machen würde: 
 // Wir lassen die Grundstuktur hier wie sie ist, wir brauchen ja aber an sich nur noch die "find_single_gem", denn:
@@ -17,8 +18,8 @@ use std::collections::{HashMap, HashSet};
 // Generell sollten wir aber wenn wir lust haben mal ein bisschen was erneuern, was ist den bitte decide.rs???? Und memory ist auch grauenhaft!
 
 pub struct SignalSolver {
-    measurements: Vec<(Pos, Vec<f32>)>,
-    refinded_measurments: Vec<(Pos, Vec<f32>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
+    measurements: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>,
+    refinded_measurments: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
     width: i32,
     height: i32,
     signal_radius: f32,
@@ -40,7 +41,7 @@ impl SignalSolver {
             known_walls: known_walls
         }
     }
-    pub fn add_measurement(&mut self, channels: &Vec<f32>, pos: Pos) {
+    pub fn add_measurement(&mut self, channels: BTreeMap<usize, ChannelInfo>, pos: Pos) {
         if self.measurements.len() > 20 {
             self.measurements.remove(0);
         }
@@ -66,17 +67,17 @@ impl SignalSolver {
         
         let mut total_error = 0.0;
         for (bot_pos, channel) in &self.measurements {
-            let signal = channel[channel_num];
-            let mut expected_signal = 0.0;
-            for gem_pos in gem_positions {
-                expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
-            }
+            if let Some(real_channel) = channel.get(&channel_num) {
+                let signal = real_channel.signal;
+                let mut expected_signal = 0.0;
+                for gem_pos in gem_positions {
+                    expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
+                }
 
-            // Bestimmter Fehler akzeptieren
-            let error = (expected_signal - signal).abs();
-            total_error += error;
-        
-            
+                // Bestimmter Fehler akzeptieren
+                let error = (expected_signal - signal).abs();
+                total_error += error;
+            }
         }
         
         1.0 / (0.001 + total_error)
@@ -127,16 +128,19 @@ impl SignalSolver {
     //     target
     // }
 
-    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel: &Vec<f32>) -> Option<Pos> {
+    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<Pos> {
         let mut positions: Vec<Pos> = Vec::new();
 
-        for i in 0..channel.len() {
-            if channel[i] == 0.0 {
-                continue;
+        for i in 0..channels.len() {
+            if let Some(channel) = channels.get(&i) {
+                if channel.signal == 0.0 {
+                    continue;
+                }
+                if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
+                    positions.push(pos)
+                }
             }
-            if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
-                positions.push(pos)
-            }
+            
         }
 
         let mut best_dist: i32 = i32::MAX;
