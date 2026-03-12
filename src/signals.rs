@@ -77,6 +77,28 @@ impl SignalSolver {
             }
         }
     }
+
+    pub fn get_index_of_collected_gem(&mut self) -> Option<usize> {
+        if self.measurements.len() < 2 {
+            return None;
+        }
+        let current_measurement = &self.measurements[0].1;
+        let past_measurment = &self.measurements[1].1;
+
+        for i in 0..past_measurment.len() {
+            if let Some(past_maes) = past_measurment.get(&i) {
+                if past_maes.signal == 0.0 {
+                    continue;
+                }
+                if let Some(curr_meas) = current_measurement.get(&i) {
+                    if curr_meas.signal == 0.0 {
+                        return Some(i);
+                    }
+                }
+            }
+        }
+        None
+    }
     
     // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
     fn rate_position(&self, gem_positions: &[Pos], channel_num: usize) -> f32 {
