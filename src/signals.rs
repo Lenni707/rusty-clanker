@@ -2,6 +2,7 @@ use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
 use crate::astar::astar;
 use crate::highlights::{self, Highlighter, colors};
 
+use std::char;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use crate::memory::ChannelInfo;
 
@@ -65,6 +66,16 @@ impl SignalSolver {
 
     pub fn clear_measuremnts(&mut self) {
         self.measurements.clear();
+    }
+
+    pub fn clear_channel_measurement_by_index(&mut self, index: usize) {
+        for i in 0..self.measurements.len() {
+            if let Some(channel) = self.measurements[i].1.get_mut(&index) {
+                channel.signal = 0.0;
+                channel.age = 0;
+                channel.added_fade_impact = 0.0;
+            }
+        }
     }
     
     // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
