@@ -117,10 +117,10 @@ pub fn decide(
             // Pfad highlighten
             let path_color = if memory.get_target().is_some() {
                 colors::RED // path bei gem
-            } else if memory.exploration_target.is_some() {
-                colors::GREEN // path bei explore
+            } else if memory.exploration_target.is_none() {
+                colors::PURPLE // path bei explore
             } else {
-                colors::PURPLE // path bei signal
+                colors::GREEN // path bei signal
             };
             highlights.add_path(path, path_color);
             

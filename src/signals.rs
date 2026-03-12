@@ -1,5 +1,6 @@
 use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
 use crate::astar::astar;
+use crate::highlights::{self, Highlighter, colors};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use crate::memory::ChannelInfo;
@@ -22,7 +23,7 @@ use crate::memory::ChannelInfo;
 pub struct SignalSolver {
     measurements: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>, // usize ist der index des channels, bist erlergisch gegen Kommentare oderß
     refinded_measurments: Vec<(Pos, BTreeMap<usize, ChannelInfo>)>, // idee: Die measurments nehmen, und dann rückwürkend auch bearbeiten wenn es neue Infos gibt
-    guesses_for_channels: Vec<Option<(Pos, f32)>>, // die Position und einen confidence Wert, wie sicher der Gem da ist.
+    guesses_for_channels: HashMap<usize, Option<(Pos, f32)>>, // die Position und einen confidence Wert, wie sicher der Gem da ist.
     width: i32,
     height: i32,
     signal_radius: f32,
@@ -37,7 +38,7 @@ impl SignalSolver {
             width,
             height,
             refinded_measurments: Vec::new(),
-            guesses_for_channels: Vec::new(),
+            guesses_for_channels: HashMap::new(),
             signal_radius,
             measurements: Vec::new(),
             signal_noise,
@@ -72,6 +73,9 @@ impl SignalSolver {
         let mut total_error = 0.0;
         for (bot_pos, channel) in &self.measurements {
             if let Some(real_channel) = channel.get(&channel_num) { // bro was ist ein real_channel?? das ist die channel info!
+                if real_channel.age < 5 {
+                    continue;
+                }
                 let signal = real_channel.signal;
                 let mut expected_signal = 0.0;
                 for gem_pos in gem_positions {
@@ -162,11 +166,10 @@ impl SignalSolver {
     }
 
 
-    fn find_single_gem_with_confidence(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<Pos> {
+    fn find_single_gem_with_confidence(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<(Pos, f32)> {
         if self.measurements.is_empty() {
             return None;
         }
-        let mut scores: Vec<(Pos, f32)> = Vec::new();
 
         let mut best_score = 0.0;
         let mut best_pos = None;
@@ -187,22 +190,35 @@ impl SignalSolver {
                 }
             }
         }
-        
+
         let confidence = (best_score / 100.0).tanh().clamp(0.0, 1.0);
         eprintln!("raw best_score: {}", confidence);
         
-        best_pos
+        best_pos.map(|p| (p, confidence))
     }
+
     // Erstmal nur Test; Idee, das jeden Tick für jeden aktiven Channel ausgerechnet wird wo 
-    pub fn guess_all_positions(&mut self, channels: &BTreeMap<usize, ChannelInfo>, vis_floors: &Vec<Pos>) {
+    pub fn guess_all_positions(&mut self, channels: &BTreeMap<usize, ChannelInfo>, vis_floors: &Vec<Pos>, highlights: &mut Highlighter) {
         for i in 0..=channels.len() {
-            let channel_info = &channels[&i];
-            if channel_info.signal == 0. {
-                self.guesses_for_channels[i] = None;
-                continue;
+            let channel_info = &channels.get(&i);
+            if let Some(channel_info) = channel_info {
+                if channel_info.signal == 0. {
+                    self.guesses_for_channels.insert(i, None);
+                    continue;
+                }
+                if let Some(info) = self.find_single_gem_with_confidence(&self.known_walls, vis_floors, i) {
+                    let pos = info.0;
+                    let confidence = info.1;
+
+                    self.guesses_for_channels.insert(i, Some(info));
+                }
             }
-            let pos = self.find_single_gem(&self.known_walls, vis_floors, i);
-            let confidence = 0;
+        }
+        for guess in &self.guesses_for_channels {
+            if let Some(guess) = guess.1 {
+                let pos = guess.0;
+                highlights.add_point(pos, colors::YELLOW);
+            }
         }
     }
 }

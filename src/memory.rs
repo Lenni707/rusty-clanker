@@ -253,6 +253,8 @@ impl BotMemory {
 
         self.signal_solver.bot_pos = state.bot;
 
+        self.signal_solver.guess_all_positions(&self.channels, &state.floor, highlights);
+
         if state.signal_level > 0.0 {
             self.ticks_since_last_signal = 0;
             self.signal_solver.add_measurement(self.channels.clone(), state.bot); // warum schon wieder clone omg das ist so arsch aber mir fällt nichts ein
