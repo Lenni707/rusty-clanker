@@ -79,12 +79,11 @@ impl SignalSolver {
     }
 
     pub fn get_index_of_collected_gem(&mut self) -> Option<usize> {
-        let n = self.measurements.len();
-        if n < 2 {
+        if self.measurements.len() < 2 {
             return None;
         }
-        let current_measurement = &self.measurements[n - 1].1;
-        let past_measurment = &self.measurements[n - 2].1;
+        let current_measurement = &self.measurements[self.measurements.len() - 1].1;
+        let past_measurment = &self.measurements[self.measurements.len() - 2].1;
 
         for i in 0..past_measurment.len() {
             if let Some(past_maes) = past_measurment.get(&i) {

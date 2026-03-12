@@ -211,7 +211,7 @@ impl BotMemory {
         let fade = self.config.signal_fade as f32;
 
         for (index, info) in &mut self.channels {
-            if info.age > 0 && (info.age as f32) < fade {
+            if info.age > 2 && (info.age as f32) < fade * 0.8 {
                 let fade_fraction = info.age as f32 / fade;
                 let corrected_sample = info.signal / fade_fraction; // das "true" signal
 
@@ -248,13 +248,14 @@ impl BotMemory {
         self.attach_age_to_channels(state);
 
         if let Some(gem_idx) = self.signal_solver.get_index_of_collected_gem() {
-            if state.tick > 10 {
-                self.signal_solver.clear_channel_measurement_by_index(gem_idx);
-                eprintln!("Clearing channel {}", gem_idx)
-            }
+            self.signal_solver.clear_channel_measurement_by_index(gem_idx);
+            eprintln!("Clearing channel {}", gem_idx)
         }
 
-        // self.calc_fade_impact();
+        if state.signal_level == 0.0 {
+            self.signal_solver.clear_measuremnts();
+        }
+        self.calc_fade_impact();
 
         // eprintln!("{:?}", &self.channels.get(&0).unwrap().signal);
 
