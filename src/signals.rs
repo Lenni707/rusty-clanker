@@ -80,7 +80,7 @@ impl SignalSolver {
             }
         }
         
-        1.0 / (0.001 + total_error)
+        1.0 / (0.005 + total_error)
     }
 
     pub fn find_single_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<Pos> {
