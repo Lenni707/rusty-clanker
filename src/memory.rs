@@ -191,22 +191,36 @@ impl BotMemory {
             self.channels.insert(i, ChannelInfo { signal: val, age, added_fade_impact});
         }
     }
-    // diese ultimative funktion soll den signal fade in den ersetn signal_fade ticks ausgleichen. Dazu nimmt es denn durschnitt um den einfluss des random errors zu minimieren
-    fn calc_fade_impact(&mut self) { // also entweder habe ich divine interlect und claude kann ich sich verpieseln weil ich das tuff selber geschrieben habe oder es worked halt nicht
-        let fade = self.config.signal_fade as usize;
+    // // diese ultimative funktion soll den signal fade in den ersetn signal_fade ticks ausgleichen. Dazu nimmt es denn durschnitt um den einfluss des random errors zu minimieren
+    // fn calc_fade_impact(&mut self) { // also entweder habe ich divine interlect und claude kann ich sich verpieseln weil ich das tuff selber geschrieben habe oder es worked halt nicht
+    //     let fade = self.config.signal_fade as usize;
 
-        for (index, info) in &mut self.channels {
-            if info.age < fade && info.age > 0 {
-                if let Some(prev_channel) = self.prev_channels.get(index) {
-                    let increase = info.signal - prev_channel.signal;
-                    let new_val = increase * (fade - info.age) as f32;
-                    info.added_fade_impact += new_val;
-                    let updated_val = info.added_fade_impact / info.age as f32;
-                    info.signal = updated_val;
+    //     for (index, info) in &mut self.channels {
+    //         if info.age < fade && info.age > 0 {
+    //             if let Some(prev_channel) = self.prev_channels.get(index) {
+    //                 let increase = info.signal - prev_channel.signal;
+    //                 let new_val = increase * (fade - info.age) as f32;
+    //                 info.added_fade_impact += new_val;
+    //                 let updated_val = info.added_fade_impact / info.age as f32;
+    //                 info.signal = updated_val;
+    //             }
+    //         }
+    //     }
+    // } 
+    fn calc_fade_impact(&mut self) {
+        let fade = self.config.signal_fade as f32;
+
+        for (_index, info) in &mut self.channels {
+            if info.age > 0 && (info.age as f32) < fade {
+                // During fade-in: observed signal ≈ true_signal * (age / fade)
+                // So: true_signal ≈ observed * (fade / age)
+                let fade_fraction = info.age as f32 / fade;
+                if fade_fraction > 0.0 {
+                    info.signal = info.signal / fade_fraction;
                 }
             }
         }
-    } 
+    }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState, highlights: &mut Highlighter) {
         // Nur im ersten Tick
