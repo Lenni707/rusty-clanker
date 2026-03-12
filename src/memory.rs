@@ -184,6 +184,16 @@ impl BotMemory {
             self.channels.insert(i as u32, ChannelInfo { signal: val, age });
         }
     }
+    fn calc_fade_impact(&mut self) {
+        let fade = self.config.signal_fade as u32;
+
+        for (index, info) in &self.channels {
+            if info.age < fade {
+                let increase = info.signal - self.prev_channels.get(index);
+                let new_val = increase
+            }
+        }
+    } 
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState, highlights: &mut Highlighter) {
         // Nur im ersten Tick
