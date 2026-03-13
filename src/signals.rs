@@ -196,7 +196,7 @@ impl SignalSolver {
         for (pos, i, confidence) in candidates {
             if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
                 let cluster = self.cluster_score(pos, &gem_positions, 5.0);
-                let score = (cluster * 3.0) - (dist as f32 * 0.5); //- confidence;
+                let score = (cluster * 3.0) - (dist as f32 * 0.5) - (1.0 / confidence) * 3.0; //TODO: Hier alle Werte nochmal probieren 
                 eprintln!("score {} \n cluster {} \n dist {} \n ====", score, cluster, dist);
                 
                 if score > best_score {
