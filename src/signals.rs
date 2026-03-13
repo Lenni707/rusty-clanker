@@ -48,7 +48,7 @@ impl SignalSolver {
         }
     }
     pub fn add_measurement(&mut self, channels: BTreeMap<usize, ChannelInfo>, pos: Pos) {
-        if self.measurements.len() > 25 { // TODO: Diese Nummer ausprobieren was am besten ist.
+        if self.measurements.len() > 25 { // getestet// TODO: Diese Nummer ausprobieren was am besten ist.
             self.measurements.remove(0);
         }
         
@@ -170,6 +170,7 @@ impl SignalSolver {
     // }
 
     pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<Pos> {
+        // Alle Kandidaten aus den channels entnehmen
         let mut candidates = Vec::new();
 
         for i in 0..=channels.len() {
@@ -183,16 +184,19 @@ impl SignalSolver {
             }
         }
 
+        let gem_positions: Vec<Pos> = candidates.iter().map(|(pos, _)| *pos).collect();
 
-        
-        let mut best_dist: i32 = i32::MAX;
+        let mut best_score = f32::NEG_INFINITY;
         let mut best: Option<Pos> = None;
         let mut best_idx: Option<usize> = None;
 
         for (pos, i) in candidates {
             if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
-                if dist < best_dist {
-                    best_dist = dist;
+                let cluster = self.cluster_score(pos, &gem_positions, 5.0);
+                let score = (cluster * 4.0) - (dist as f32);
+                
+                if score > best_score {
+                    best_score = score;
                     best = Some(pos);
                     best_idx = Some(i);
                 }
@@ -205,6 +209,27 @@ impl SignalSolver {
             }
         }
         best
+    }
+
+    fn cluster_score(
+        &self, 
+        center: Pos, // der aktuell beobachtete gem von get_sig_target
+        all_guesses: &Vec<Pos>, // alle guesses für gems
+        cluster_radius: f32 // wie weit soll das ausgeglilchen werden
+    ) -> f32 {
+        let mut count = 0.0;
+
+        for other_pos in all_guesses {
+
+            if *other_pos == center {
+                continue;
+            }
+
+            if euclidean(center, *other_pos) < cluster_radius {
+                count += 1.0;
+            }
+        }
+        count
     }
 
 
