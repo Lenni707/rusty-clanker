@@ -170,7 +170,7 @@ impl SignalSolver {
     // }
 
     pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<Pos> {
-        let mut positions: Vec<Pos> = Vec::new();
+        let mut candidates = Vec::new();
 
         for i in 0..=channels.len() {
             if let Some(channel) = channels.get(&i) {
@@ -178,34 +178,44 @@ impl SignalSolver {
                     continue;
                 }
                 if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
-                    positions.push(pos)
+                    candidates.push((pos, i));
                 }
             }
-            
         }
 
+
+        
         let mut best_dist: i32 = i32::MAX;
         let mut best: Option<Pos> = None;
+        let mut best_idx: Option<usize> = None;
 
-        for i in positions {
-            if let Some(dist) = get_dist(i, self.bot_pos, &self.known_walls, self.width, self.height) {
+        for (pos, i) in candidates {
+            if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
                 if dist < best_dist {
                     best_dist = dist;
-                    best = Some(i);
+                    best = Some(pos);
+                    best_idx = Some(i);
                 }
+            }
+        }
+        if let Some(best_idx) = best_idx {
+            let option = self.find_single_gem_with_confidence(known_walls, vis_floors, best_idx);
+            if let Some((_, confi)) = option {
+                eprintln!("confidence {}", confi)
             }
         }
         best
     }
 
 
-    fn find_single_gem_with_confidence(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<(Pos, f32)> {
+    fn find_single_gem_with_confidence(
+        &self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize
+    ) -> Option<(Pos, f32)> {
         if self.measurements.is_empty() {
             return None;
         }
 
-        let mut best_score = 0.0;
-        let mut best_pos = None;
+        let mut scores: Vec<([i32; 2], f32)> = Vec::new();
 
         for x in 0..self.width {
             for y in 0..self.height {
@@ -216,18 +226,23 @@ impl SignalSolver {
                 }
 
                 let score = self.rate_position(&[pos], channel_num);
-                
-                if score > best_score {
-                    best_score = score;
-                    best_pos = Some(pos);
-                }
+                scores.push((pos, score));
             }
         }
 
-        let confidence = (best_score / 100.0).tanh().clamp(0.0, 1.0);
-        eprintln!("raw best_score: {}", confidence);
-        
-        best_pos.map(|p| (p, confidence))
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        let (best_pos, best_score) = scores.first()?;
+        let second_score = scores.get(1).map(|(_, s)| *s).unwrap_or(0.0);
+
+        // Wie viel besser ist der erste score als der 2.?
+        let confidence = if second_score > 0.0 {
+            (best_score / second_score - 1.0).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        // eprintln!("raw best_score: {}", confidence);
+        Some((*best_pos, confidence))
     }
 
     // Erstmal nur Test; Idee, das jeden Tick für jeden aktiven Channel ausgerechnet wird wo 
