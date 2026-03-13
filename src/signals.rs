@@ -117,7 +117,7 @@ impl SignalSolver {
 
                 // Bestimmter Fehler akzeptieren
                 let error = (expected_signal - signal).abs();
-                total_error += error;
+                total_error += error * signal;
             }
         }
         
@@ -178,22 +178,26 @@ impl SignalSolver {
                 if channel.signal == 0.0 {
                     continue;
                 }
-                if let Some(pos) = self.find_single_gem(known_walls, vis_floors, i) {
-                    candidates.push((pos, i));
+                if channel.age < 5 {
+                    continue;
+                }
+                if let Some((pos, confidence)) = self.find_single_gem_with_confidence(known_walls, vis_floors, i) {
+                    candidates.push((pos, i, confidence));
                 }
             }
         }
 
-        let gem_positions: Vec<Pos> = candidates.iter().map(|(pos, _)| *pos).collect();
+        let gem_positions: Vec<Pos> = candidates.iter().map(|(pos, _, _)| *pos).collect();
 
         let mut best_score = f32::NEG_INFINITY;
         let mut best: Option<Pos> = None;
         let mut best_idx: Option<usize> = None;
 
-        for (pos, i) in candidates {
+        for (pos, i, confidence) in candidates {
             if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
                 let cluster = self.cluster_score(pos, &gem_positions, 5.0);
-                let score = (cluster * 3.0) - (dist as f32 * 0.5);
+                let score = (cluster * 3.0) - (dist as f32 * 0.5); //- confidence;
+                eprintln!("score {} \n cluster {} \n dist {} \n ====", score, cluster, dist);
                 
                 if score > best_score {
                     best_score = score;
@@ -261,11 +265,14 @@ impl SignalSolver {
         let second_score = scores.get(1).map(|(_, s)| *s).unwrap_or(0.0);
 
         // Wie viel besser ist der erste score als der 2.?
-        let confidence = if second_score > 0.0 {
-            (best_score / second_score - 1.0).clamp(0.0, 1.0)
-        } else {
-            1.0
-        };
+        // let confidence = if second_score > 0.0 {
+        //     (best_score / second_score - 1.0).clamp(0.0, 1.0)
+        // } else {
+        //     1.0
+        // };
+        let top_positions: Vec<Pos> = scores.iter().take(10).map(|(p, _)| *p).collect();
+        let spread = top_positions.iter().map(|p| euclidean(*p, *best_pos)).sum::<f32>() / top_positions.len() as f32;
+        let confidence = 1.0 / (1.0 + spread / 3.0); // je kleiner der spread, desto höher confidence
         // eprintln!("raw best_score: {}", confidence);
         Some((*best_pos, confidence))
     }
