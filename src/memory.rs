@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::collections::VecDeque; use crate::astar::{self, astar};
 use crate::explore::has_line_of_sight;
 use crate::highlights::{self, Highlighter, colors};
+use crate::memory;
 // iwie effiezient oder so ka
 use crate::states::{GameState, Config};
 
@@ -90,7 +91,7 @@ impl BotMemory {
             last_pos: None,
             recent_positions: VecDeque::new(),
 
-            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6], 0.03, HashSet::new()), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
+            signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6], 0.03, HashSet::new(), 6.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
             channels: BTreeMap::new(),
             prev_channels: BTreeMap::new(),
 
@@ -241,7 +242,8 @@ impl BotMemory {
                 self.config.signal_radius,
                 [0, 0], // mock value fuck borrow checker
                 self.config.signal_noise,
-                HashSet::new()
+                HashSet::new(),
+                self.config.signal_fade,
             );
         }
 

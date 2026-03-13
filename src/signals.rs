@@ -29,18 +29,20 @@ pub struct SignalSolver {
     height: i32,
     signal_radius: f32,
     signal_noise: f32,
+    signal_fade: f32, 
     pub bot_pos: Pos,
     pub known_walls: HashSet<Pos>
 }
 
 impl SignalSolver {
-    pub fn new(width: i32, height: i32, signal_radius: f32, bot_pos: Pos, signal_noise: f32, known_walls: HashSet<Pos>) -> Self {
+    pub fn new(width: i32, height: i32, signal_radius: f32, bot_pos: Pos, signal_noise: f32, known_walls: HashSet<Pos>, signal_fade: f32) -> Self {
         SignalSolver {
             width,
             height,
             refinded_measurments: Vec::new(),
             guesses_for_channels: HashMap::new(),
             signal_radius,
+            signal_fade,
             measurements: Vec::new(),
             signal_noise,
             bot_pos: bot_pos,
@@ -106,7 +108,7 @@ impl SignalSolver {
         let mut total_error = 0.0;
         for (bot_pos, channel) in &self.measurements {
             if let Some(real_channel) = channel.get(&channel_num) { // bro was ist ein real_channel?? das ist die channel info!
-                if real_channel.age < 5 {
+                if real_channel.age < self.signal_fade as usize {
                     continue;
                 }
                 let signal = real_channel.signal;
@@ -178,7 +180,7 @@ impl SignalSolver {
                 if channel.signal == 0.0 {
                     continue;
                 }
-                if channel.age < 5 {
+                if channel.age < self.signal_fade as usize {
                     continue;
                 }
                 if let Some((pos, confidence)) = self.find_single_gem_with_confidence(known_walls, vis_floors, i) {
