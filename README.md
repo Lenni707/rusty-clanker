@@ -1,11 +1,11 @@
-# 🤖 RustyClanker
+# 🦀 RustyClanker
 
-A competitive maze-navigation bot for the [Hidden Gems](https://github.com/hidden-gems) challenge, written in Rust. RustyClanker uses signal triangulation and A\* pathfinding to hunt down gems faster than you can say "divine intellect".
+A competitive maze-navigation bot for the [Hidden Gems](https://hiddengems.gymnasiumsteglitz.de/) challenge, written in Rust. RustyClanker uses signal triangulation and A\* pathfinding to hunt down gems faster than you can say "divine intellect".
 
 ```
 ╔═══════════════════════════════╗
 ║  💎  . . # . . . . . # . . . ║
-║  . # . . # . 🤖. . . . . . . ║
+║  . # . . # . 🦀. . . . . . . ║
 ║  . . . . . . . . # . . # . . ║
 ║  . # # . . . . . . . . . . . ║
 ║  . . . . # . . . . . # . . . ║
@@ -47,9 +47,9 @@ Pathfinding is A\* with the opponent bot treated as a temporary wall when they'r
 **Requirements:** Rust (stable), the Hidden Gems runner
 
 ```bash
-git clone https://github.com/lenni707/rustyclanker
-cd rustyclanker
-cargo build --release
+git clone https://github.com/lenni707/rusty-clanker
+cd rusty-clanker
+ruby runner.rb ../rust-clanker
 ```
 
 **Run against the random walker:**
