@@ -1,11 +1,11 @@
-# 🤖 RustyClanker
+# 🦀 RustyClanker
 
 A competitive maze-navigation bot for the [Hidden Gems](https://github.com/hidden-gems) challenge, written in Rust. RustyClanker uses signal triangulation and A\* pathfinding to hunt down gems faster than you can say "divine intellect".
 
 ```
 ╔═══════════════════════════════╗
 ║  💎  . . # . . . . . # . . . ║
-║  . # . . # . 🤖. . . . . . . ║
+║  . # . . # . 🦀. . . . . . . ║
 ║  . . . . . . . . # . . # . . ║
 ║  . # # . . . . . . . . . . . ║
 ║  . . . . # . . . . . # . . . ║
