@@ -192,9 +192,9 @@ impl SignalSolver {
         let mut candidates = Vec::new();
 
         for i in 0..channels.len() {
-            // if forbidden_indexes.contains(&i) {
-            //     continue;
-            // }
+            if forbidden_indexes.contains(&i) {
+                continue;
+            }
             if let Some(channel) = channels.get(&i) {
                 if channel.signal == 0.0 {
                     continue;

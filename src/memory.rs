@@ -370,6 +370,21 @@ impl BotMemory {
                 }
             }
         }
+        if let Some(signal_target) = extract_signal_target_pos(self.signal_target) {
+            if let Some(enemy_bots) = &state.visible_bots {
+                for bot in enemy_bots {
+
+                    if let Some(enemy_path) = astar(bot.position, signal_target, &self.known_walls, self.config.width, self.config.height) {
+                        if let  Some(own_path) = astar(state.bot, signal_target, &self.known_walls, self.config.width, self.config.height) {
+                            if enemy_path.len() + 4 < own_path.len() {
+                                enemy_closer = true;
+                                //self
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if change_curr_target {
             self.current_target = None;
         }
