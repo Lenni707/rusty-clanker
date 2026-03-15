@@ -187,11 +187,14 @@ impl SignalSolver {
     //     target
     // }
 
-    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<(usize, Pos)> {
+    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>, forbidden_indexes: &Vec<usize>) -> Option<(usize, Pos)> {
         // Alle Kandidaten aus den channels entnehmen
         let mut candidates = Vec::new();
 
-        for i in 0..=channels.len() {
+        for i in 0..channels.len() {
+            // if forbidden_indexes.contains(&i) {
+            //     continue;
+            // }
             if let Some(channel) = channels.get(&i) {
                 if channel.signal == 0.0 {
                     continue;

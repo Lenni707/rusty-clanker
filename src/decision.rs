@@ -3,7 +3,7 @@ use std::{
     i32,
 };
 
-use crate::memory::extract_signal_target;
+use crate::memory::extract_signal_target_pos;
 use crate::signals::SignalSolver;
 use crate::{memory::BotMemory, states::GameState};
 use crate::{explore::*, signals};
@@ -55,7 +55,7 @@ pub fn decide(
     //     highlights.add_point([t[0], t[1] + 1], colors::RED);
     //     t
     // }
-    else if let Some(t) = extract_signal_target(memory.signal_target) {
+    else if let Some(t) = extract_signal_target_pos(memory.signal_target) {
         highlights.add_point(t, colors::CYAN);
         t
     }

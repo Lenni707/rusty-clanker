@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::collections::VecDeque; use crate::astar::{self, astar};
 use crate::explore::has_line_of_sight;
 use crate::highlights::{self, Highlighter, colors};
-use crate::memory;
 // iwie effiezient oder so ka
 use crate::states::{GameState, Config};
 
@@ -28,6 +27,7 @@ pub struct BotMemory {
     pub channels: BTreeMap<usize, ChannelInfo>,
     pub prev_channels: BTreeMap<usize, ChannelInfo>,
     pub signal_target: Option<(usize, Pos)>,
+    pub index_forbidden_signal_targets: Vec<usize>,
 
     pub signal: SignalStats,
 }
@@ -93,6 +93,7 @@ impl BotMemory {
             channels: BTreeMap::new(),
             prev_channels: BTreeMap::new(),
             signal_target: None,
+            index_forbidden_signal_targets: Vec::new(),
 
             signal: SignalStats::new(),
         }
@@ -120,8 +121,8 @@ impl BotMemory {
                 let next = [current[0] + dir[0], current[1] + dir[1]];
                 
                 // ob es noch in bounds ist
-                if next[0] < 0 || next[0] >= self.config.width || 
-                   next[1] < 0 || next[1] >= self.config.height {
+                if next[0] < 1 || next[0] >= self.config.width || 
+                   next[1] < 1 || next[1] >= self.config.height {
                     continue;
                 }
                 
@@ -314,8 +315,25 @@ impl BotMemory {
 
         // self.known_positions.retain(|_, &mut last_seen| state.tick - last_seen < 250);
 
+        // set signal_target
+        self.signal_target = self.signal_solver.get_signal_target(&self.known_walls, &state.floor, &self.channels, &self.index_forbidden_signal_targets);
+
+        if state.signal_level == 0.0 {
+            self.signal_target = None;
+        }
+
+        // updates the forbidden indexes for signal targets, is used for changing targets when the enemy is closer to the gem then we are
+        for i in 0..self.channels.len() {
+            if let Some(channel) = self.channels.get(&i) {
+                if channel.signal == 0.0 {
+                    self.index_forbidden_signal_targets.retain(|&x| x != i); // tuff sigma: claude
+                }
+            }
+        }
+
         // Check für das current target
         let mut change_curr_target = false;
+        let mut enemy_closer = false;
         if let Some(target) = &self.current_target {
             // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
             self.exploration_target = None;
@@ -340,8 +358,9 @@ impl BotMemory {
                     if has_line_of_sight(bot.position, target.position, &self.known_walls, self.config.vis_radius) {
                         if let Some(enemy_path) = astar(bot.position, target.position, &self.known_walls, self.config.width, self.config.height) {
                             if let  Some(own_path) = astar(state.bot, target.position, &self.known_walls, self.config.width, self.config.height) {
-                                if enemy_path.len() + 2 < own_path.len() {
+                                if enemy_path.len() < own_path.len() {
                                     change_curr_target = true;
+                                    enemy_closer = true;
                                     self.known_gems.remove(&target.position);
                                     //self
                                 }
@@ -355,11 +374,12 @@ impl BotMemory {
             self.current_target = None;
         }
 
-        // set signal_target
-        self.signal_target = self.signal_solver.get_signal_target(&self.known_walls, &state.floor, &self.channels);
-
-        if state.signal_level == 0.0 {
-            self.signal_target = None;
+        if enemy_closer {
+            if let Some(index_signal_target) = extract_signal_target_index(self.signal_target) {
+                if !self.index_forbidden_signal_targets.contains(&index_signal_target) {
+                    self.index_forbidden_signal_targets.push(index_signal_target);
+                }
+            }
         }
 
         // Exploratin Check: Wurde das Ziel erreicht?
@@ -456,6 +476,10 @@ pub fn get_closer_pos(
     }
 }
 
-pub fn extract_signal_target(signal_target: Option<(usize, Pos)>) -> Option<Pos> {
+pub fn extract_signal_target_pos(signal_target: Option<(usize, Pos)>) -> Option<Pos> {
     signal_target.map(|(_, pos)| pos)
+}
+
+pub fn extract_signal_target_index(signal_target: Option<(usize, Pos)>) -> Option<usize> {
+    signal_target.map(|(index, _)| index)
 }
