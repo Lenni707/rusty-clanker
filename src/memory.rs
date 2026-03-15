@@ -323,11 +323,9 @@ impl BotMemory {
         }
 
         // updates the forbidden indexes for signal targets, is used for changing targets when the enemy is closer to the gem then we are
-        for i in 0..self.channels.len() {
-            if let Some(channel) = self.channels.get(&i) {
-                if channel.signal == 0.0 {
-                    self.index_forbidden_signal_targets.retain(|&x| x != i); // tuff sigma: claude
-                }
+        for (i, channel) in &self.channels {
+            if channel.signal == 0.0 {
+                self.index_forbidden_signal_targets.retain(|&x| x != *i);
             }
         }
 
