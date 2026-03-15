@@ -374,7 +374,7 @@ impl BotMemory {
 
                     if let Some(enemy_path) = astar(bot.position, signal_target, &self.known_walls, self.config.width, self.config.height) {
                         if let  Some(own_path) = astar(state.bot, signal_target, &self.known_walls, self.config.width, self.config.height) {
-                            if enemy_path.len() + 4 < own_path.len() {
+                            if enemy_path.len() + 3 < own_path.len() {
                                 enemy_closer = true;
                                 //self
                             }
