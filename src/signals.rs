@@ -187,7 +187,7 @@ impl SignalSolver {
     //     target
     // }
 
-    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<Pos> {
+    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>) -> Option<(usize, Pos)> {
         // Alle Kandidaten aus den channels entnehmen
         let mut candidates = Vec::new();
 
@@ -208,7 +208,7 @@ impl SignalSolver {
         let gem_positions: Vec<Pos> = candidates.iter().map(|(pos, _, _)| *pos).collect();
 
         let mut best_score = f32::NEG_INFINITY;
-        let mut best: Option<Pos> = None;
+        let mut best: Option<(usize, Pos)> = None;
         let mut best_idx: Option<usize> = None;
 
         for (pos, i, confidence) in candidates {
@@ -219,7 +219,7 @@ impl SignalSolver {
                 
                 if score > best_score {
                     best_score = score;
-                    best = Some(pos);
+                    best = Some((i, pos));
                     best_idx = Some(i);
                 }
             }

@@ -27,11 +27,9 @@ pub struct BotMemory {
     pub signal_solver: SignalSolver,
     pub channels: BTreeMap<usize, ChannelInfo>,
     pub prev_channels: BTreeMap<usize, ChannelInfo>,
+    pub signal_target: Option<(usize, Pos)>,
 
     pub signal: SignalStats,
-    pub signal_target: Option<Pos>,
-    pub last_signal_targets: Vec<Pos>,
-    pub ticks_since_last_signal: i32,
 }
 
 pub struct SignalStats {
@@ -94,11 +92,9 @@ impl BotMemory {
             signal_solver: SignalSolver::new(49, 29, 5.0, [5, 6], 0.03, HashSet::new(), 6.0), // Dummy Werte, werden beim ersten Tick überschrieben, sollten aber zur Not funktionieren
             channels: BTreeMap::new(),
             prev_channels: BTreeMap::new(),
+            signal_target: None,
 
             signal: SignalStats::new(),
-            signal_target: None,
-            last_signal_targets: Vec::new(),
-            ticks_since_last_signal: 0,
         }
     }
     pub fn get_reachable_positions(&self, state: &GameState) -> HashSet<Pos> {
@@ -266,10 +262,7 @@ impl BotMemory {
         self.signal_solver.guess_all_positions(&self.channels, &state.floor, highlights);
 
         if state.signal_level > 0.0 {
-            self.ticks_since_last_signal = 0;
             self.signal_solver.add_measurement(self.channels.clone(), state.bot); // warum schon wieder clone omg das ist so arsch aber mir fällt nichts ein
-        } else {
-            self.ticks_since_last_signal += 1;
         }
         
         // Alle Gems Markieren
@@ -361,42 +354,11 @@ impl BotMemory {
         if change_curr_target {
             self.current_target = None;
         }
-        // Signal Target Check; Wurde es erreicht?
-        let mut change_sig_target = false;
-        if let Some(target) = &self.signal_target {
-            if self.ticks_since_last_signal > 5 {
-                change_sig_target = true;
-                eprint!("ÖLASDÖFDSLJFKÖLSDFJÖSJDFÖSLFJKÖSDFJ")
-            }
-            // Wenn es ein Target gibt: Dann nichtmehr zum Exploration Target zurück gehen
-            self.exploration_target = None;
-            // Checks für curr target
-            let reached = &state.bot == target;
-            let mut visible = false;
-            if has_line_of_sight(state.bot, *target, &self.known_walls, self.config.vis_radius) {
-                visible = true;
-            }
-            if reached || (!visible && state.floor.contains(&target)) {
-                // TODO: Das ist komisch hier, aber wenn es ein ODER ist dann geht es kaputt
-                change_sig_target = true;
-            }
-            // Auch wenn der andere Bot näher ist:
-            if let Some(enemy_bots) = &state.visible_bots {
-                for bot in enemy_bots {
-                    // Wenn gegnerischer Bot gem sehen kann
-                    if has_line_of_sight(bot.position, *target, &self.known_walls, self.config.vis_radius) {
-                        if let Some(enemy_path) = astar(bot.position, *target, &self.known_walls, self.config.width, self.config.height) {
-                            if let  Some(own_path) = astar(state.bot, *target, &self.known_walls, self.config.width, self.config.height) {
-                                if enemy_path.len() + 2 < own_path.len() {
-                                    change_sig_target = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if change_sig_target {
+
+        // set signal_target
+        self.signal_target = self.signal_solver.get_signal_target(&self.known_walls, &state.floor, &self.channels);
+
+        if state.signal_level == 0.0 {
             self.signal_target = None;
         }
 
@@ -431,18 +393,6 @@ impl BotMemory {
         }
         
         None
-    }
-    pub fn get_signal_target(&mut self, bot_pos: Pos) -> Option<Pos> {
-        if astar(bot_pos, self.signal_target?, &self.known_walls, self.config.width, self.config.height).is_none() {
-            self.signal_target = None;
-            self.last_signal_targets.clear();
-            eprintln!("No way found, reseting signal_taret");
-            return None;
-        }
-        match &self.signal_target {
-            Some(t) => Some(*t),
-            None => None,
-        }
     }
 
     pub fn get_best_gem(&self, state: &GameState) -> Option<[i32; 2]> {
@@ -504,4 +454,8 @@ pub fn get_closer_pos(
             None
         }
     }
+}
+
+pub fn extract_signal_target(signal_target: Option<(usize, Pos)>) -> Option<Pos> {
+    signal_target.map(|(_, pos)| pos)
 }

@@ -3,6 +3,7 @@ use std::{
     i32,
 };
 
+use crate::memory::extract_signal_target;
 use crate::signals::SignalSolver;
 use crate::{memory::BotMemory, states::GameState};
 use crate::{explore::*, signals};
@@ -46,8 +47,6 @@ pub fn decide(
         // memory.signal_solver.update_measurenments(t, memory.config.signal_radius); // hahah ich weiß nicht warum aber das hier scheint besser zu sein
         // memory.signal_solver.clear_measuremnts();
         highlights.add_point(t, colors::RED);
-        memory.signal.signal_target = None;
-        memory.signal.ticks_since_signal_up = 0;
         t
     }
     // // else if let Some(t) = memory.get_signal_target(state.bot) {
@@ -56,7 +55,7 @@ pub fn decide(
     //     highlights.add_point([t[0], t[1] + 1], colors::RED);
     //     t
     // }
-    else if let Some(t) = memory.signal_solver.get_signal_target(&memory.known_walls, &state.floor, &memory.channels) {
+    else if let Some(t) = extract_signal_target(memory.signal_target) {
         highlights.add_point(t, colors::CYAN);
         t
     }
@@ -136,14 +135,12 @@ pub fn decide(
             };
         } else {
             eprintln!("UNEXPECTED BEHAVIOR: Ziel wurde erreicht?");
-            memory.signal.signal_target = None; 
             // Ziel wurde erreicht
             return movement_fallback(&memory, state, None);
         }
     }
 
     memory.exploration_target = None;
-    memory.signal.signal_target = None; 
     eprintln!("Es wurde kein Pfad gefunden :/");
     // Check, um unterschiede zwischen den sichtbaren gems und den gespeicherten Gems zu finden
     for gem in &state.visible_gems {
