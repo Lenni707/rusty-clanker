@@ -47,9 +47,9 @@ Pathfinding is A\* with the opponent bot treated as a temporary wall when they'r
 **Requirements:** Rust (stable), the Hidden Gems runner
 
 ```bash
-git clone https://github.com/lenni707/rustyclanker
-cd rustyclanker
-cargo build --release
+git clone https://github.com/lenni707/rusty-clanker
+cd rusty-clanker
+ruby runner.rb ../rust-clanker
 ```
 
 **Run against the random walker:**
