@@ -104,26 +104,42 @@ impl SignalSolver {
     
     // berechnet wie gut die position zu dem gemessen signal wert passt und gibt einen score
     fn rate_position(&self, gem_positions: &[Pos], channel_num: usize) -> f32 {
-        
         let mut total_error = 0.0;
+        let mut weight_sum = 0.0;
+
         for (bot_pos, channel) in &self.measurements {
-            if let Some(real_channel) = channel.get(&channel_num) { // bro was ist ein real_channel?? das ist die channel info!
-                if real_channel.age < self.signal_fade as usize {
-                    continue;
-                }
-                let signal = real_channel.signal;
-                let mut expected_signal = 0.0;
+            if let Some(info) = channel.get(&channel_num) {
+                if info.signal == 0.0 { continue; }
+
+                let fade_factor = if self.signal_fade > 0.0 && info.age > 0 {
+                    let age = info.age as f32;
+                    let fade = self.signal_fade;
+                    // Fade-in: erste `fade` Ticks
+                    (age / fade).min(1.0)
+                } else {
+                    1.0
+                };
+
+                if fade_factor < 0.05 { continue; } // zu unsicher
+
+                // Signal auf "volles" Signal hochrechnen – aber pro Messung einzeln
+                let corrected_signal = info.signal / fade_factor;
+
+                let mut expected = 0.0;
                 for gem_pos in gem_positions {
-                    expected_signal += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
+                    expected += signal_from_dist(*gem_pos, *bot_pos, self.signal_radius);
                 }
 
-                // Bestimmter Fehler akzeptieren
-                let error = (expected_signal - signal).abs();
-                total_error += error * signal;
+                let error = (expected - corrected_signal).abs();
+                // Gewichtung: Messungen mit höherem fade_factor sind zuverlässiger
+                let weight = fade_factor * fade_factor;
+                total_error += error * weight;
+                weight_sum += weight;
             }
         }
-        
-        1.0 / (0.001 + total_error)
+
+        if weight_sum == 0.0 { return 0.0; }
+        1.0 / (0.001 + total_error / weight_sum)
     }
 
     pub fn find_single_gem(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channel_num: usize) -> Option<Pos> {
@@ -180,9 +196,9 @@ impl SignalSolver {
                 if channel.signal == 0.0 {
                     continue;
                 }
-                if channel.age < self.signal_fade as usize {
-                    continue;
-                }
+                // if channel.age < self.signal_fade as usize {
+                //     continue;
+                // }
                 if let Some((pos, confidence)) = self.find_single_gem_with_confidence(known_walls, vis_floors, i) {
                     candidates.push((pos, i, confidence));
                 }
