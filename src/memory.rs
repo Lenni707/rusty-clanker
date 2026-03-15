@@ -121,8 +121,8 @@ impl BotMemory {
                 let next = [current[0] + dir[0], current[1] + dir[1]];
                 
                 // ob es noch in bounds ist
-                if next[0] < 1 || next[0] >= self.config.width || 
-                   next[1] < 1 || next[1] >= self.config.height {
+                if next[0] < 0 || next[0] >= self.config.width || 
+                   next[1] < 0 || next[1] >= self.config.height {
                     continue;
                 }
                 
