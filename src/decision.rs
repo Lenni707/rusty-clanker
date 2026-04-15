@@ -69,7 +69,7 @@ pub fn decide(
         if memory.last_signal_targets.len() == 2 {
             let all_same = memory.last_signal_targets.iter().all(|&t| t == pos);
             if all_same {
-                memory.signal_target = Some(pos);
+                // memory.signal_target = Some(pos);
             }
         }
         pos
