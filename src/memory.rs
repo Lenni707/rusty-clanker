@@ -14,6 +14,7 @@ pub struct BotMemory {
     pub known_gems: BTreeMap<[i32; 2], GemMemory>,
     pub known_positions: BTreeMap<[i32; 2], PositionMemory>, // ich weiß wirklich nicht wieso positions, das sind eigentlich die floors
     pub known_walls: HashSet<[i32; 2]>,
+    pub reachable_positions: HashSet<Pos>,
     pub known_floors: HashSet<[i32; 2]>, // Das ist nur fürs einfacheren arbeiten, anstatt mit known_positions
     pub exploration_target: Option<[i32; 2]>,
     pub gem_spawn_heatmap: BTreeMap<[i32; 2], u32>, // pub last_steps
@@ -93,6 +94,7 @@ impl BotMemory {
             known_positions: BTreeMap::new(),
             known_walls: HashSet::new(),
             known_floors: HashSet::new(),
+            reachable_positions: HashSet::new(),
             exploration_target: None,
             gem_spawn_heatmap: BTreeMap::new(),
 
@@ -105,6 +107,63 @@ impl BotMemory {
             signal_target: None,
             last_signal_targets: Vec::new(),
         }
+    }
+    pub fn get_reachable_positions(&self, state: &GameState) -> HashSet<Pos> {
+        let mut reachable = HashSet::new();
+        let mut stack = vec![state.bot];
+        
+        while let Some(current) = stack.pop() {
+            if reachable.contains(&current) {
+                continue;
+            }
+            
+            // wenn es eine known wall ist skippen
+            if self.known_walls.contains(&current) {
+                continue;
+            }
+            
+            // wird dann reachable
+            reachable.insert(current);
+            
+            // versuchen alles nachbarn des feldes zu flodden
+            let directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for dir in &directions {
+                let next = [current[0] + dir[0], current[1] + dir[1]];
+                
+                // ob es noch in bounds ist
+                if next[0] < 0 || next[0] >= self.config.width || 
+                   next[1] < 0 || next[1] >= self.config.height {
+                    continue;
+                }
+                
+                // nicht flodden wenn wand
+                if self.known_walls.contains(&next) {
+                    continue;
+                }
+                
+                // wenn noch nicht visited zu staxk pushen (eig unnötig weil oben schon gecjhecjkt wird)
+                if !reachable.contains(&next) {
+                    stack.push(next);
+                }
+            }
+        }
+        
+        reachable
+    }
+
+    pub fn get_wall_positions(&self, state: &GameState) -> Vec<Pos> {
+        let reachable = self.get_reachable_positions(state);
+
+        let mut walls = Vec::new();
+        for x in 0..self.config.width {
+            for y in 0..self.config.height {
+                let p: Pos = [x, y];
+                if !reachable.contains(&p) {
+                    walls.push(p);
+                }
+            }
+        }
+        walls
     }
     // Update: Wurden neue gems gesehen? Läuft vor decide
     pub fn update(&mut self, state: &GameState) {
@@ -119,6 +178,14 @@ impl BotMemory {
         }
 
         self.signal_solver.bot_pos = state.bot;
+
+        for pos in self.get_reachable_positions(state) {
+            self.reachable_positions.insert(pos);
+        }
+
+        for pos in self.get_wall_positions(state) { // insert calculated hidden walls into known walls
+            self.known_walls.insert(pos);
+        }
 
         if state.signal_level > 0.0 {
             self.signal_solver.add_measurement(state.signal_level, state.bot);
