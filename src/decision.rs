@@ -1,3 +1,4 @@
+use std::panic::RefUnwindSafe;
 use std::{
     collections::HashSet,
     i32,
@@ -66,11 +67,11 @@ pub fn decide(
     // PortalAction::Place { portal_id: 1, direction: W } => {
     //     return format!("P{}{}", 1, W);
     // }
-    if try_place_entrance(state, memory, 1).is_some(){
+    if try_place_entrance(state, memory, 1).is_some() {
         return try_place_entrance(state, memory, 1).unwrap();
     }
 
-    
+
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         // memory.signal_solver.update_measurenments(t, memory.config.signal_radius); // hahah ich weiß nicht warum aber das hier scheint besser zu sein
         // memory.signal_solver.clear_measuremnts();

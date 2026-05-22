@@ -1,6 +1,7 @@
 use crate::helper_func::{Pos, euclidean, get_dist, heuristic};
 use crate::astar::astar;
 use crate::highlights::{self, Highlighter, colors};
+use crate::portals::Portal;
 
 use std::char;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -187,7 +188,7 @@ impl SignalSolver {
     //     target
     // }
 
-    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>, forbidden_indexes: &Vec<usize>) -> Option<(usize, Pos)> {
+    pub fn get_signal_target(&self, known_walls: &HashSet<Pos>, vis_floors: &Vec<Pos>, channels: &BTreeMap<usize, ChannelInfo>, forbidden_indexes: &Vec<usize>, portals: &Vec<Portal>) -> Option<(usize, Pos)> {
         // Alle Kandidaten aus den channels entnehmen
         let mut candidates = Vec::new();
 
@@ -215,7 +216,7 @@ impl SignalSolver {
         let mut best_idx: Option<usize> = None;
 
         for (pos, i, confidence) in candidates {
-            if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
+            if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height, portals) {
                 let cluster = self.cluster_score(pos, &gem_positions, 5.0);
                 let score = (cluster * 3.0) - (dist as f32 * 0.5) - (1.0 / confidence) * 3.0; //TODO: Hier alle Werte nochmal probieren 
                 

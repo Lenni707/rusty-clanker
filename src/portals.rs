@@ -30,7 +30,8 @@ pub fn try_place_entrance(state: &GameState, memory: &BotMemory, id: usize) -> O
 
     for (wall_pos, dir) in candidates {
         if memory.known_walls.contains(&wall_pos) 
-        && !state.portal_stubs.contains(&wall_pos) { // TODO: Das noch mit den Sachen aus memory machen
+        && !state.portal_stubs.contains(&wall_pos) 
+        && !state.portals.contains(&wall_pos) { // TODO: Das noch mit den Sachen aus memory machen
             return Some(Action::PlacePortal { id, dir });
         }
 

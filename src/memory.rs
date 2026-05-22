@@ -328,7 +328,7 @@ impl BotMemory {
         // self.known_positions.retain(|_, &mut last_seen| state.tick - last_seen < 250);
 
         // set signal_target
-        self.signal_target = self.signal_solver.get_signal_target(&self.known_walls, &state.floor, &self.channels, &self.index_forbidden_signal_targets);
+        self.signal_target = self.signal_solver.get_signal_target(&self.known_walls, &state.floor, &self.channels, &self.index_forbidden_signal_targets, &self.portals);
 
         if state.signal_level == 0.0 {
             self.signal_target = None;
