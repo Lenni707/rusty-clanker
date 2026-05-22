@@ -66,12 +66,12 @@ fn main() {
 
         memory.update(&state, &mut highlights);
         
-        let dir = decide(&state, &mut memory, &mut highlights);
+        let action = decide(&state, &mut memory, &mut highlights);
 
         memory.last_pos = Some(state.bot); // get last pos
 
         let highlights_json = highlights.to_json();
-        println!("{} {}", dir.as_geo(), highlights_json);
+        println!("{} {}", action.as_command(), highlights_json);
         stdout.flush().unwrap();
     }
 }
