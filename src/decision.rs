@@ -4,6 +4,8 @@ use std::{
 };
 
 use crate::memory::extract_signal_target_pos;
+use crate::portals::{Portal, PortalAction};
+use crate::portals::*;
 use crate::signals::SignalSolver;
 use crate::{memory::BotMemory, states::GameState};
 use crate::{explore::*, signals};
@@ -12,6 +14,23 @@ use crate::astar::astar;
 use crate::helper_func::*;
 
 use crate::highlights::{Highlighter, colors};
+
+pub enum Action {
+    Move(Direction),
+    PlacePortal { id: usize, dir: &'static str },
+    Wait,
+}
+
+
+impl Action {
+    pub fn as_command(&self) -> String {
+        match self {
+            Action::Move(dir) => dir.as_geo().to_string(),
+            Action::PlacePortal { id, dir } => format!("P{}{}", id, dir),
+            Action::Wait => "WAIT".to_string(),
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -42,7 +61,16 @@ pub fn decide(
     state: &GameState,
     memory: &mut BotMemory,
     highlights: &mut Highlighter
-) -> Direction {
+) -> Action {
+    // Vor dem Entscheiden des Ziels: Portal platzieren?
+    // PortalAction::Place { portal_id: 1, direction: W } => {
+    //     return format!("P{}{}", 1, W);
+    // }
+    if try_place_entrance(state, memory, 1).is_some(){
+        return try_place_entrance(state, memory, 1).unwrap();
+    }
+
+    
     let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
         // memory.signal_solver.update_measurenments(t, memory.config.signal_radius); // hahah ich weiß nicht warum aber das hier scheint besser zu sein
         // memory.signal_solver.clear_measuremnts();
@@ -124,10 +152,10 @@ pub fn decide(
             
 
             return match (dx, dy) {
-                (1, 0) => Direction::Right, // X+1 = rechts
-                (-1, 0) => Direction::Left, // X-1 = links
-                (0, 1) => Direction::Down, // Y+1 = unten
-                (0, -1) => Direction::Up, // Y-1 = oben
+                (1, 0) => Action::Move(Direction::Right), // X+1 = rechts
+                (-1, 0) => Action::Move(Direction::Left), // X-1 = links
+                (0, 1) => Action::Move(Direction::Down), // Y+1 = unten
+                (0, -1) => Action::Move(Direction::Up), // Y-1 = oben
                 _ => {
                     eprintln!("UNEXPECTED BEHAVIOR: Unbekannte Bewegung");
                     return movement_fallback(&memory, state, None);
@@ -154,10 +182,10 @@ pub fn decide(
             eprintln!("DISCRAPENCY: {:?}", gem.position)
         }
     }
-    Direction::Wait
+    Action::Wait
 }
 
-fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Option<Pos>) -> Direction {
+fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Option<Pos>) -> Action {
     eprintln!("UNEXPECTED BEHAVIOR: FALLBACK MOVEMENT");
     
     let width = memory.config.width;
@@ -195,11 +223,11 @@ fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Opt
                         let dy = next_step[1] - current[1];
                         
                         return match (dx, dy) {
-                            (1, 0) => Direction::Right,
-                            (-1, 0) => Direction::Left,
-                            (0, 1) => Direction::Down,
-                            (0, -1) => Direction::Up,
-                            _ => Direction::Wait,
+                            (1, 0) => Action::Move(Direction::Right), // X+1 = rechts
+                            (-1, 0) => Action::Move(Direction::Left), // X-1 = links
+                            (0, 1) => Action::Move(Direction::Down), // Y+1 = unten
+                            (0, -1) => Action::Move(Direction::Up), // Y-1 = oben
+                            _ => Action::Wait
                         };
                     }
                 }
@@ -239,11 +267,11 @@ fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Opt
         
         if is_in_bounds(next_pos, width, height) 
            && !memory.known_walls.contains(&next_pos) {
-            return dir;
+            return Action::Move(dir);
         }
     }
     
-    Direction::Wait
+    Action::Wait
 }
 
 fn get_positions_at_radius(radius: i32) -> Vec<[i32; 2]> {
