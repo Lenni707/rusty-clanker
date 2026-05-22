@@ -103,7 +103,7 @@ impl BotMemory {
 
             signal: SignalStats::new(),
 
-            portals: HashSet::new(),
+            portals: Vec::new(),
             known_portal_stubs: HashMap::new(),
 
         }
