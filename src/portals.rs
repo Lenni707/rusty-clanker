@@ -39,10 +39,10 @@ pub fn try_place_entrance(state: &GameState, memory: &BotMemory, id: usize) -> O
             if dir == "N" {
                 return Some(Action::Move(Direction::Up));
             }
-            if dir == "W" {
+            if dir == "E" {
                 return Some(Action::Move(Direction::Right));
             }
-            if dir == "E" {
+            if dir == "W" {
                 return Some(Action::Move(Direction::Left));
             }
             if dir == "S" {

@@ -158,7 +158,9 @@ impl BotMemory {
         for x in 0..self.config.width {
             for y in 0..self.config.height {
                 let p: Pos = [x, y];
-                if !reachable.contains(&p) {
+                
+                if !reachable.contains(&p) && !state.portal_stubs.contains(&p) && !state.portals.contains(&p) {
+                    
                     walls.push(p);
                 }
             }
