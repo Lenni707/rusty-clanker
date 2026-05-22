@@ -1,7 +1,8 @@
 use std::collections::{HashSet};
 
 use crate::astar::astar;
-use crate::memory::BotMemory;
+use crate::memory::{BotMemory};
+use crate::portals::Portal;
 
 pub type Pos = [i32; 2]; // dachte iwie das kann tuff sein
 
@@ -10,6 +11,24 @@ pub type Pos = [i32; 2]; // dachte iwie das kann tuff sein
 // - Schätzt die Distanz zwischen 2 Punkten
 pub fn heuristic(a: [i32; 2], b: [i32; 2]) -> i32 {
     (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
+}
+
+pub fn heuristic_with_portals(a: Pos, b: Pos, portals: &Vec<Portal>) -> i32  { 
+    let mut best = heuristic(a, b);
+
+    for portal in portals {
+        if !portal.is_complete() {
+            continue;
+        }
+
+        let via_portal = heuristic(a, portal.entry.unwrap()) + heuristic(portal.exit_from.unwrap(), b);
+
+        if via_portal < best {
+            best = via_portal;
+        }
+    }
+
+    best
 }
 
 pub fn euclidean(a: [i32; 2], b: [i32; 2]) -> f32 {

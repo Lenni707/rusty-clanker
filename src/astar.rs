@@ -4,7 +4,7 @@ use std::{
     i32,
 };
 
-use crate::helper_func::*;
+use crate::{helper_func::*, portals::Portal};
 
 // =====================================================
 // PATHFINDING
@@ -42,7 +42,7 @@ impl PartialOrd for Node {
 
 
 // 2. Gibt alle Nachbarn zurück, no shit right?
-fn get_neighbors(pos: [i32; 2]) -> Vec<[i32; 2]> {
+fn get_neighbors(pos: [i32; 2]) -> Vec<Pos> {
     vec![
         [pos[0] + 1, pos[1]], // Rechts (X+1)
         [pos[0] - 1, pos[1]], // Links (X-1)
@@ -59,6 +59,7 @@ pub fn astar(
     start: [i32; 2],
     goal: [i32; 2],
     walls: &HashSet<[i32; 2]>,
+    portals: &Vec<Portal>,
     width: i32,
     height: i32,
 ) -> Option<Vec<[i32; 2]>> {
@@ -80,11 +81,15 @@ pub fn astar(
     open_set.push(Node {
         position: start,
         g_cost: 0,
-        f_cost: heuristic(start, goal),
+        f_cost: heuristic_with_portals(start, goal, portals),
     });
     // Hauptschleife
     // - wenn es einen Knoten zum Untersuchen gibt:
     while let Some(current) = open_set.pop() {
+        if current.g_cost > *g_score.get(&current.position).unwrap_or(&i32::MAX) {
+            continue
+        }
+
         // Ist das Ziel bereits erreicht?
         if current.position == goal {
             //eprintln!("Ziel erreicht");
@@ -108,7 +113,7 @@ pub fn astar(
         // Ist das Ziel nicht erreicht:
         // NACHBARN UNTERSUCHEN
 
-        for neighbor_pos in get_neighbors(current.position) {
+        for mut neighbor_pos in get_neighbors(current.position) {
             // Ist der Nachbar im Spielfeld, ist das überhaupt relevant hier?
             if !is_in_bounds(neighbor_pos, width, height) {
                 continue;
@@ -116,6 +121,13 @@ pub fn astar(
             // Ist der Nachbar eine Wand?
             if walls.contains(&neighbor_pos) {
                 continue; // Wenn ja: Überspringen
+            }
+
+
+            if let Some(portal) = portals.iter().find(|p| p.entry == Some(neighbor_pos)) {
+                if let Some(exit) = portal.exit_from {
+                    neighbor_pos = exit;
+                }
             }
 
             // Berechnen der Kosten, von current bis zu neighbor
@@ -129,7 +141,7 @@ pub fn astar(
                 g_score.insert(neighbor_pos, tentative_g_score);
 
                 // Füge neighbor zur open_set hinzu (oder update ihn)
-                let h = heuristic(neighbor_pos, goal);
+                let h = heuristic_with_portals(neighbor_pos, goal, portals);
                 open_set.push(Node {
                     position: neighbor_pos,
                     g_cost: tentative_g_score,
