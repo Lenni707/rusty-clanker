@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::collections::VecDeque; use crate::astar::{self, astar};
 use crate::explore::has_line_of_sight;
 use crate::highlights::{self, Highlighter, colors};
+use crate::portals::Portal;
 // iwie effiezient oder so ka
 use crate::states::{GameState, Config};
 
@@ -32,14 +33,10 @@ pub struct BotMemory {
     pub signal: SignalStats,
 
     // Portels
-    pub portals: HashSet<PortalPair>,
+    pub portals: Vec<Portal>,
     pub known_portal_stubs: HashMap<Pos, i32>, // hable gefundene Portale: speichert Position, und wann es zum letzen Mal gesehen wurde.
 }
 
-pub struct PortalPair {
-    pub portal_one: Pos,
-    pub portal_two: Pos,
-}
 
 pub struct SignalStats {
     pub signal_target: Option<Pos>,
