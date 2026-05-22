@@ -11,6 +11,8 @@ pub struct GameState {
     pub visible_bots: Option<Vec<EnemyBot>>,
     pub signal_level: f32,
     pub channels: Vec<f32>,
+    pub portals: Vec<[i32; 2]>,
+    pub portal_stubs: Vec<[i32; 2]>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,7 +26,8 @@ pub struct Config {
     pub gem_ttl: u32,
     pub signal_radius: f32,
     pub signal_fade: f32,
-    pub signal_noise: f32, 
+    pub signal_noise: f32,
+    pub max_portals: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,6 +55,7 @@ impl Config {
             signal_noise: 0.0,
             gem_spawn_rate: 0.0,
             max_gems: 0,
+            max_portals: 0,
         }
     }
 }

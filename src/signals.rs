@@ -218,7 +218,8 @@ impl SignalSolver {
             if let Some(dist) = get_dist(pos, self.bot_pos, &self.known_walls, self.width, self.height) {
                 let cluster = self.cluster_score(pos, &gem_positions, 5.0);
                 let score = (cluster * 3.0) - (dist as f32 * 0.5) - (1.0 / confidence) * 3.0; //TODO: Hier alle Werte nochmal probieren 
-                eprintln!("score {} \n cluster {} \n dist {} \n ====", score, cluster, dist);
+                
+                // eprintln!("score {} \n cluster {} \n dist {} \n ====", score, cluster, dist); // DAS HIER KANN AUCH AN SEIN IST eigenltich gant cool
                 
                 if score > best_score {
                     best_score = score;
@@ -230,7 +231,7 @@ impl SignalSolver {
         if let Some(best_idx) = best_idx {
             let option = self.find_single_gem_with_confidence(known_walls, vis_floors, best_idx);
             if let Some((_, confi)) = option {
-                eprintln!("confidence {}", confi)
+                //eprintln!("confidence {}", confi)
             }
         }
         best

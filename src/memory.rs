@@ -30,6 +30,15 @@ pub struct BotMemory {
     pub index_forbidden_signal_targets: Vec<usize>,
 
     pub signal: SignalStats,
+
+    // Portels
+    pub portals: HashSet<PortalPair>,
+    pub known_portal_stubs: HashMap<Pos, i32>, // hable gefundene Portale: speichert Position, und wann es zum letzen Mal gesehen wurde.
+}
+
+pub struct PortalPair {
+    pub portal_one: Pos,
+    pub portal_two: Pos,
 }
 
 pub struct SignalStats {
@@ -96,6 +105,10 @@ impl BotMemory {
             index_forbidden_signal_targets: Vec::new(),
 
             signal: SignalStats::new(),
+
+            portals: HashSet::new(),
+            known_portal_stubs: HashMap::new(),
+
         }
     }
     pub fn get_reachable_positions(&self, state: &GameState) -> HashSet<Pos> {
@@ -328,6 +341,9 @@ impl BotMemory {
                 self.index_forbidden_signal_targets.retain(|&x| x != *i);
             }
         }
+
+        // Sachen für die Portals:
+        eprintln!("{}", state.portals.len());
 
         // Check für das current target
         let mut change_curr_target = false;
