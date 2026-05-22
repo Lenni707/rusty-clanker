@@ -42,9 +42,10 @@ pub fn get_dist(
     b: [i32; 2],
     known_walls: &HashSet<Pos>,
     width: i32,
-    height: i32
+    height: i32,
+    portals: &Vec<Portal>,
 ) -> Option<i32> {
-    let path = astar(a, b, &known_walls, width, height);
+    let path = astar(a, b, &known_walls, portals, width, height);
 
     let dist = match path {
         Some(path) => Some(path.len() as i32 - 1),

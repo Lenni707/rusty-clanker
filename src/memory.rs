@@ -369,8 +369,8 @@ impl BotMemory {
                 for bot in enemy_bots {
                     // Wenn gegnerischer Bot gem sehen kann
                     if has_line_of_sight(bot.position, target.position, &self.known_walls, self.config.vis_radius) {
-                        if let Some(enemy_path) = astar(bot.position, target.position, &self.known_walls, self.config.width, self.config.height) {
-                            if let  Some(own_path) = astar(state.bot, target.position, &self.known_walls, self.config.width, self.config.height) {
+                        if let Some(enemy_path) = astar(bot.position, target.position, &self.known_walls, &self.portals, self.config.width, self.config.height) {
+                            if let  Some(own_path) = astar(state.bot, target.position, &self.known_walls, &self.portals, self.config.width, self.config.height) {
                                 if enemy_path.len() < own_path.len() {
                                     change_curr_target = true;
                                     enemy_closer = true;
@@ -387,8 +387,8 @@ impl BotMemory {
             if let Some(enemy_bots) = &state.visible_bots {
                 for bot in enemy_bots {
 
-                    if let Some(enemy_path) = astar(bot.position, signal_target, &self.known_walls, self.config.width, self.config.height) {
-                        if let  Some(own_path) = astar(state.bot, signal_target, &self.known_walls, self.config.width, self.config.height) {
+                    if let Some(enemy_path) = astar(bot.position, signal_target, &self.known_walls, &self.portals, self.config.width, self.config.height) {
+                        if let  Some(own_path) = astar(state.bot, signal_target, &self.known_walls, &self.portals, self.config.width, self.config.height) {
                             if enemy_path.len() + 3 < own_path.len() {
                                 enemy_closer = true;
                                 //self
@@ -452,7 +452,7 @@ impl BotMemory {
         let mut best_dist: i32 = i32::MAX;
 
         for (&gem_pos, gem_mem) in self.known_gems.iter() {
-            let dist = match get_dist(state.bot, gem_pos, &self.known_walls, self.config.width, self.config.height) {
+            let dist = match get_dist(state.bot, gem_pos, &self.known_walls, self.config.width, self.config.height, &self.portals) {
                 Some(d) => d,
                 None => continue, // unreachable gem
             };
@@ -488,8 +488,8 @@ pub fn get_closer_pos(
     b: [i32; 2],
     memory: &BotMemory,
 ) -> Option<[i32; 2]> {
-    let dist_a = get_dist(a, goal, &memory.known_walls, memory.config.width, memory.config.height);
-    let dist_b = get_dist(b, goal, &memory.known_walls, memory.config.width, memory.config.height);
+    let dist_a = get_dist(a, goal, &memory.known_walls, memory.config.width, memory.config.height, &memory.portals);
+    let dist_b = get_dist(b, goal, &memory.known_walls, memory.config.width, memory.config.height, &memory.portals);
 
     match (dist_a, dist_b) {
         (Some(da), Some(db)) => {

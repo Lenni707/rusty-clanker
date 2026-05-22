@@ -97,7 +97,7 @@ pub fn decide(
     } 
     else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
         memory.exploration_target = Some(new_target);
-        if astar(state.bot, new_target, &memory.known_walls, memory.config.width, memory.config.height).is_none() {
+        if astar(state.bot, new_target, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height).is_none() {
             // Target not rachable
             eprintln!("TARGET NOT REACHABLE");
             return movement_fallback(memory, state, Some(new_target)); // changes the target until it is reachable
@@ -127,6 +127,7 @@ pub fn decide(
         state.bot, 
         target, 
         &walls, 
+        &memory.portals,
         memory.config.width, 
         memory.config.height
     );
@@ -214,7 +215,7 @@ fn movement_fallback(memory: &BotMemory, state: &GameState, original_target: Opt
                 }
                 
                 // path to this canidate
-                if let Some(path) = astar(current, candidate, &memory.known_walls, width, height) {
+                if let Some(path) = astar(current, candidate, &memory.known_walls, &memory.portals, width, height) {
                     eprintln!("reachable {:?} (is offeseted {})", candidate, radius);
                     
                     if path.len() > 1 {
