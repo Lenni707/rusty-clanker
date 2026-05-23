@@ -3,7 +3,6 @@ use crate::astar::astar;
 use crate::highlights::{self, Highlighter, colors};
 use crate::portals::Portal;
 
-use std::char;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use crate::memory::ChannelInfo;
 
