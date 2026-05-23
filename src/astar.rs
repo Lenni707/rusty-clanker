@@ -113,7 +113,7 @@ pub fn astar(
         // Ist das Ziel nicht erreicht:
         // NACHBARN UNTERSUCHEN
 
-        for mut neighbor_pos in get_neighbors(current.position) {
+        for neighbor_pos in get_neighbors(current.position) {
             // Ist der Nachbar im Spielfeld, ist das überhaupt relevant hier?
             if !is_in_bounds(neighbor_pos, width, height) {
                 continue;

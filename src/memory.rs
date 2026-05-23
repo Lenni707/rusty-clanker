@@ -35,6 +35,7 @@ pub struct BotMemory {
     // Portels
     pub portals: Vec<Portal>,
     pub known_portal_stubs: HashMap<Pos, i32>, // hable gefundene Portale: speichert Position, und wann es zum letzen Mal gesehen wurde.
+    pub known_vis_walls: HashSet<Pos>,
 }
 
 
@@ -105,6 +106,7 @@ impl BotMemory {
 
             portals: Vec::new(),
             known_portal_stubs: HashMap::new(),
+            known_vis_walls: HashSet::new(),
 
         }
     }
@@ -309,6 +311,7 @@ impl BotMemory {
         // Alle sichtbaren Walls markieren
         for wall_pos in &state.wall {
             self.known_walls.insert(*wall_pos);
+            self.known_vis_walls.insert(*wall_pos);
         }
 
         for pos in self.get_reachable_positions(state) {

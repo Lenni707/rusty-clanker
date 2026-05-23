@@ -1,4 +1,4 @@
-use crate::{decision::Action, helper_func::*, memory::{self, BotMemory}, states::GameState};
+use crate::{astar::astar, decision::Action, helper_func::*, memory::{self, BotMemory}, states::GameState};
 use crate::decision::Direction;
 pub struct Portal {
     pub id: usize,
@@ -51,3 +51,59 @@ fn get_portal_potential_at(state: &GameState, memory: &BotMemory)  { //  -> f32
 
 
 }
+// =========
+// Bewertet Portalpaare anhand von der Distanz, die sie überspringen
+// =========
+// Problem: Erst wirklich gut, wenn die Map gut erkannt ist.
+fn score_portal_pair(
+    start_pos: Pos,
+    end_pos: Pos,
+    memory: &BotMemory,
+) -> f32 {
+    let real_path = astar(start_pos, end_pos, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height);
+    let real_dist = real_path.map(|p| p.len()).unwrap_or(676767) as f32;
+
+    // Luftlinie: wenn es geringe Luftlinie aber sonst große Distanz ist
+    let air_line = heuristic(start_pos, end_pos) as f32;
+
+    let score = real_dist - air_line;
+
+    score
+}
+// =========
+// Findet gute Ausgänge für Portale mit bisher nur einem Eingang
+// =========
+fn find_best_portal_exit(entrance_pos: Pos, memory: &BotMemory) -> Option<Pos> {
+    let mut best_score = 0.0;
+    let mut best_pos = None;
+
+    for wall in &memory.known_vis_walls {
+        // Nachbarn, also die Felder, wo dann gelandet wird. Die Floor neighbors
+        for neighbor in get_floor_neighbors(*wall, memory) {
+            let score = score_portal_pair(entrance_pos, neighbor, memory);
+
+            if score > best_score {
+                best_pos = Some(*wall);
+                best_score = score;
+            }
+        }
+    }
+    best_pos
+}
+
+fn get_floor_neighbors(pos: Pos, memory: &BotMemory) -> Vec<Pos> {
+    let candidates = [
+        ([pos[0] + 1, pos[1]], "E"), // Rechts (X+1)
+        ([pos[0] - 1, pos[1]], "W"), // Links (X-1)
+        ([pos[0], pos[1] + 1], "S"), // Unten (Y+1)
+        ([pos[0], pos[1] - 1], "N"), // Oben (Y-1)
+    ];
+    let mut floor_neighbors = Vec::new();
+    for (candidate,_) in candidates {
+        if memory.known_floors.contains(&candidate) {
+            floor_neighbors.push(candidate);
+        }
+    }
+    floor_neighbors
+}
+// IDEE: Erstmal am anfang irgendwo ein Portal platzieren, dann einen guten Exit finden...
