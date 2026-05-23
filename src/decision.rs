@@ -67,8 +67,8 @@ pub fn decide(
     // PortalAction::Place { portal_id: 1, direction: W } => {
     //     return format!("P{}{}", 1, W);
     // }
-    if try_place_entrance(state, memory, 1).is_some() {
-        return try_place_entrance(state, memory, 1).unwrap();
+    if try_place_portal(state, memory, 1).is_some() {
+        return try_place_portal(state, memory, 1).unwrap();
     }
 
 

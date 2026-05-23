@@ -118,16 +118,12 @@ pub fn astar(
             if !is_in_bounds(neighbor_pos, width, height) {
                 continue;
             }
+            // portal entries fire befroe walls bc they are allwoed
+            let is_portal_entry = portals.iter().any(|p| p.entry == Some(neighbor_pos));
+
             // Ist der Nachbar eine Wand?
-            if walls.contains(&neighbor_pos) {
+            if walls.contains(&neighbor_pos) && !is_portal_entry {
                 continue; // Wenn ja: Überspringen
-            }
-
-
-            if let Some(portal) = portals.iter().find(|p| p.entry == Some(neighbor_pos)) {
-                if let Some(exit) = portal.exit_from {
-                    neighbor_pos = exit;
-                }
             }
 
             // Berechnen der Kosten, von current bis zu neighbor
@@ -147,6 +143,30 @@ pub fn astar(
                     g_cost: tentative_g_score,
                     f_cost: tentative_g_score + h, // g + h = f
                 });
+            }
+        }
+
+        // wenn die current pos, ein portal entry ist direkt zum exit teleportieren
+        if let Some(portal) = portals.iter().find(|p| p.entry == Some(current.position)) {
+            if let Some(exit) = portal.exit_from {
+                if is_in_bounds(exit, width, height) { // bisschen dumm aber sicher ist sicher
+                    // if teleporting with this portal gives a better route, remember it
+                    // einfach selbe logik wie oben mit den neighbour fields nur jetzt halt extra wenn man auf einem portal ist
+                    let tentative_g_score = *g_score.get(&current.position).unwrap_or(&i32::MAX);
+                    let exit_g_score = *g_score.get(&exit).unwrap_or(&i32::MAX);
+
+                    if tentative_g_score < exit_g_score {
+                        came_from.insert(exit, current.position);
+                        g_score.insert(exit, tentative_g_score);
+
+                        let h = heuristic_with_portals(exit, goal, portals);
+                        open_set.push(Node {
+                            position: exit,
+                            g_cost: tentative_g_score,
+                            f_cost: tentative_g_score + h,
+                        });
+                    }
+                }
             }
         }
     }

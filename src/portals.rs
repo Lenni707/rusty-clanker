@@ -19,7 +19,7 @@ pub enum PortalAction {
     None,
 }
 
-pub fn try_place_entrance(state: &GameState, memory: &BotMemory, id: usize) -> Option<Action> {
+pub fn try_place_portal(state: &GameState, memory: &BotMemory, id: usize) -> Option<Action> {
     let pos = state.bot;
     let candidates = [
         ([pos[0] + 1, pos[1]], "E"), // Rechts (X+1)
@@ -29,27 +29,25 @@ pub fn try_place_entrance(state: &GameState, memory: &BotMemory, id: usize) -> O
     ];
 
     for (wall_pos, dir) in candidates {
-        if memory.known_walls.contains(&wall_pos) 
-        && !state.portal_stubs.contains(&wall_pos) 
-        && !state.portals.contains(&wall_pos) { // TODO: Das noch mit den Sachen aus memory machen
+        if memory.known_walls.contains(&wall_pos) && !state.portal_stubs.contains(&wall_pos) && !state.portals.contains(&wall_pos) {
             return Some(Action::PlacePortal { id, dir });
         }
-
-        // TODO: Löchen das hier
-        if state.portals.contains(&wall_pos) {
-            if dir == "N" {
-                return Some(Action::Move(Direction::Up));
-            }
-            if dir == "E" {
-                return Some(Action::Move(Direction::Right));
-            }
-            if dir == "W" {
-                return Some(Action::Move(Direction::Left));
-            }
-            if dir == "S" {
-                return Some(Action::Move(Direction::Down));
-            }
-        }
+        continue;
     }
     None
+}
+
+fn get_portal_potential_at(state: &GameState, memory: &BotMemory)  { //  -> f32
+    let score = 0.2; // base score
+
+    // factor in distance to set point
+    let width = memory.config.width;
+    let height = memory.config.height;
+
+    let corner_top_left = [width * (1/4), (height * (3/4))];
+    let corner_top_right = [width * (3/4), (height * (3/4))];
+    let corner_bottom_left = [width * (1/4), (height * (1/4))];
+    let corner_bottom_right = [width * (3/4), (height * (1/4))];
+
+
 }
