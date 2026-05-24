@@ -90,8 +90,19 @@ pub fn decide(
     let gem_target = memory.get_target();
     let signal_target = extract_signal_target_pos(memory.signal_target);
 
-    // --- Portal Platzieren (nur wenn kein Gem/Signal drängt) ---
-    if gem_target.is_none() && signal_target.is_none() {
+    let gem_is_urgent = gem_target.map(|t| {
+        astar(state.bot, t, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height)
+            .map(|p| p.len() < 10)
+            .unwrap_or(false)
+    }).unwrap_or(false);
+
+    let signal_is_urgent = signal_target.map(|t| {
+        astar(state.bot, t, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height)
+            .map(|p| p.len() < 10)
+            .unwrap_or(false)
+    }).unwrap_or(false);
+    // then use gem_is_urgent instead of gem_target.is_none()
+    if !gem_is_urgent && ! signal_is_urgent {
 
         // Eingang platzieren
         if memory.portal_entry_placed.is_none() {
