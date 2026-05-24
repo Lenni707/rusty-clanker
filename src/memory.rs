@@ -5,6 +5,7 @@ use crate::highlights::{self, Highlighter, colors};
 use crate::portals::Portal;
 // iwie effiezient oder so ka
 use crate::states::{GameState, Config};
+use crate::portals::{get_portal_potential_at, find_best_portal_exit, get_floor_neighbors};
 
 use crate::helper_func::{get_dist, Pos};
 use crate::signals::{self, SignalSolver};
@@ -36,6 +37,14 @@ pub struct BotMemory {
     pub portals: Vec<Portal>,
     pub known_portal_stubs: HashMap<Pos, i32>, // hable gefundene Portale: speichert Position, und wann es zum letzen Mal gesehen wurde.
     pub known_vis_walls: HashSet<Pos>,
+
+    pub portals_placed: usize,             // wie viele Portale bereits gesetzt
+
+    pub portal_entry_placed: Option<Pos>,  // Wand wo wir Eingang gesetzt haben (self-tracked)
+    pub portal_exit_placed: Option<Pos>,   // analog für Ausgang
+    pub portal_entry_target: Option<Pos>,
+    pub portal_exit_target: Option<Pos>,
+
 }
 
 
@@ -107,6 +116,12 @@ impl BotMemory {
             portals: Vec::new(),
             known_portal_stubs: HashMap::new(),
             known_vis_walls: HashSet::new(),
+
+            portal_entry_target: None,
+            portal_exit_target: None,
+            portals_placed: 0,
+            portal_entry_placed: None,
+            portal_exit_placed: None,
 
         }
     }
@@ -435,6 +450,9 @@ impl BotMemory {
                 }
             }
         }
+
+        // Portale updaten
+        self.update_portal_targets(state);
     }
 
     pub fn get_target(&self) -> Option<[i32; 2]> {
@@ -481,6 +499,53 @@ impl BotMemory {
         }
 
         best
+    }
+
+    pub fn update_portal_targets(&mut self, state: &GameState) {
+        let complete_portals = self.portals.iter().filter(|p| p.is_complete()).count();
+        if complete_portals >= 1 {
+            self.portal_entry_target = None;
+            self.portal_exit_target = None;
+            return;
+        }
+
+        if self.portal_entry_placed.is_some() {
+            // Eingang wurde bereits gesetzt → Ausgang suchen
+            if self.portal_exit_target.is_none() && self.portal_exit_placed.is_none() {
+                if let Some(entry_wall) = self.portal_entry_placed {
+                    // Floor-Nachbar des Eingangs als Referenzpunkt für score_portal_pair
+                    let entry_ref = get_floor_neighbors(entry_wall, self)
+                        .into_iter()
+                        .next()
+                        .unwrap_or(entry_wall);
+                    self.portal_exit_target = find_best_portal_exit(entry_ref, self);
+                }
+            }
+        } else {
+            // Noch nichts gesetzt → Eingang suchen
+            if self.portal_entry_target.is_none() {
+                self.portal_entry_target = self.find_best_portal_entry(state);
+            }
+        }
+    }
+    fn find_best_portal_entry(&self, state: &GameState) -> Option<Pos> {
+        let mut best_score = -1.0_f32;
+        let mut best_pos = None;
+
+        for &wall in &self.known_vis_walls {
+            if state.portal_stubs.contains(&wall) || state.portals.contains(&wall) {
+                continue;
+            }
+            if get_floor_neighbors(wall, self).is_empty() {
+                continue;
+            }
+            let score = get_portal_potential_at(wall, state, self);
+            if score > best_score {
+                best_score = score;
+                best_pos = Some(wall);
+            }
+        }
+        best_pos
     }
 
 }

@@ -1,4 +1,3 @@
-use std::panic::RefUnwindSafe;
 use std::{
     collections::HashSet,
     i32,
@@ -10,6 +9,7 @@ use crate::portals::*;
 use crate::signals::SignalSolver;
 use crate::{memory::BotMemory, states::GameState};
 use crate::{explore::*, signals};
+
 
 use crate::astar::astar;
 use crate::helper_func::*;
@@ -54,6 +54,30 @@ impl Direction {
     }
 }
 
+fn step_along_path(path: &[[i32; 2]], bot: Pos, memory: &BotMemory, state: &GameState) -> Action {
+    let next = path[1];
+    match (next[0] - bot[0], next[1] - bot[1]) {
+        (1, 0)  => Action::Move(Direction::Right),
+        (-1, 0) => Action::Move(Direction::Left),
+        (0, 1)  => Action::Move(Direction::Down),
+        (0, -1) => Action::Move(Direction::Up),
+        _       => movement_fallback(memory, state, None),
+    }
+}
+fn is_adjacent(a: Pos, b: Pos) -> bool {
+    (a[0] - b[0]).abs() + (a[1] - b[1]).abs() == 1
+}
+
+fn get_direction_to(from: Pos, to: Pos) -> Option<&'static str> {
+    match (to[0] - from[0], to[1] - from[1]) {
+        (1, 0)  => Some("E"),
+        (-1, 0) => Some("W"),
+        (0, 1)  => Some("S"),
+        (0, -1) => Some("N"),
+        _       => None,
+    }
+}
+
 // =====================================================
 // Entscheidungsfunktion für den Bot
 // =====================================================
@@ -63,50 +87,76 @@ pub fn decide(
     memory: &mut BotMemory,
     highlights: &mut Highlighter
 ) -> Action {
-    // Vor dem Entscheiden des Ziels: Portal platzieren?
-    // PortalAction::Place { portal_id: 1, direction: W } => {
-    //     return format!("P{}{}", 1, W);
-    // }
-    if try_place_portal(state, memory, 1).is_some() {
-        return try_place_portal(state, memory, 1).unwrap();
+    let gem_target = memory.get_target();
+    let signal_target = extract_signal_target_pos(memory.signal_target);
+
+    // --- Portal Platzieren (nur wenn kein Gem/Signal drängt) ---
+    if gem_target.is_none() && signal_target.is_none() {
+
+        // Eingang platzieren
+        if memory.portal_entry_placed.is_none() {
+            if let Some(wall_target) = memory.portal_entry_target {
+                if is_adjacent(state.bot, wall_target) {
+                    if let Some(dir_str) = get_direction_to(state.bot, wall_target) {
+                        memory.portal_entry_placed = Some(wall_target);
+                        memory.portal_entry_target = None;
+                        return Action::PlacePortal { id: 1, dir: dir_str };
+                    }
+                } else {
+                    highlights.add_point(wall_target, colors::YELLOW);
+                    if let Some(path) = astar(state.bot, wall_target, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height) {
+                        if path.len() > 1 {
+                            return step_along_path(&path, state.bot, memory, state);
+                        }
+                    }
+                    // Nicht erreichbar → neu suchen nächsten Tick
+                    memory.portal_entry_target = None;
+                }
+            }
+        }
+
+        // Ausgang platzieren
+        if memory.portal_entry_placed.is_some() && memory.portal_exit_placed.is_none() {
+            if let Some(wall_target) = memory.portal_exit_target {
+                if is_adjacent(state.bot, wall_target) {
+                    if let Some(dir_str) = get_direction_to(state.bot, wall_target) {
+                        memory.portal_exit_placed = Some(wall_target);
+                        memory.portal_exit_target = None;
+                        return Action::PlacePortal { id: 1, dir: dir_str };
+                    }
+                } else {
+                    highlights.add_point(wall_target, colors::YELLOW);
+                    if let Some(path) = astar(state.bot, wall_target, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height) {
+                        if path.len() > 1 {
+                            return step_along_path(&path, state.bot, memory, state);
+                        }
+                    }
+                    // Nicht erreichbar → neu suchen nächsten Tick
+                    memory.portal_exit_target = None;
+                }
+            }
+        }
     }
 
-
-    let target = if let Some(t) = memory.get_target() { // Gibt es einen target gem
-        // memory.signal_solver.update_measurenments(t, memory.config.signal_radius); // hahah ich weiß nicht warum aber das hier scheint besser zu sein
-        // memory.signal_solver.clear_measuremnts();
+    // --- Normaler Target-Flow ---
+    let target = if let Some(t) = gem_target {
         highlights.add_point(t, colors::RED);
         t
-    }
-    // // else if let Some(t) = memory.get_signal_target(state.bot) {
-    // else if let Some (t) = memory.signal_solver.get_test_target(&memory.known_walls, &state.floor, &state.channels) {
-    //     highlights.add_point(t, colors::CYAN);
-    //     highlights.add_point([t[0], t[1] + 1], colors::RED);
-    //     t
-    // }
-    else if let Some(t) = extract_signal_target_pos(memory.signal_target) {
+    } else if let Some(t) = signal_target {
         highlights.add_point(t, colors::CYAN);
         t
-    }
-    else if let Some(pos) = memory.exploration_target { // gibt es ein exploration target
+    } else if let Some(pos) = memory.exploration_target {
         highlights.add_point(pos, colors::GREEN);
-        // if should_abort_exploration(&state, pos, &memory, memory.config.vis_radius) {
-        //     memory.exploration_target = None;
-        //     return Direction::Wait; // TODO: Hier noch einbauen, das direkt das nächste Ziel verwendet wird
-        // }
         pos
-    } 
-    else if let Some(new_target) = get_exploration_target(state, memory) { // if no exploration target, pick new target
+    } else if let Some(new_target) = get_exploration_target(state, memory) {
         memory.exploration_target = Some(new_target);
         if astar(state.bot, new_target, &memory.known_walls, &memory.portals, memory.config.width, memory.config.height).is_none() {
-            // Target not rachable
             eprintln!("TARGET NOT REACHABLE");
-            return movement_fallback(memory, state, Some(new_target)); // changes the target until it is reachable
+            return movement_fallback(memory, state, Some(new_target));
         }
         highlights.add_point(new_target, colors::GREEN);
         new_target
-    } 
-    else { // if picking new target also failed, revert to movement fallback
+    } else {
         eprintln!("Kein Exploration Target gefunden - 404 :/");
         return movement_fallback(memory, state, None);
     };

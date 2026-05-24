@@ -112,7 +112,7 @@ fn score_portal_pair(
 // =========
 // Findet gute Ausgänge für Portale mit bisher nur einem Eingang
 // =========
-fn find_best_portal_exit(entrance_pos: Pos, memory: &BotMemory) -> Option<Pos> {
+pub fn find_best_portal_exit(entrance_pos: Pos, memory: &BotMemory) -> Option<Pos> {
     let mut best_score = 0.0;
     let mut best_pos = None;
 
@@ -130,7 +130,7 @@ fn find_best_portal_exit(entrance_pos: Pos, memory: &BotMemory) -> Option<Pos> {
     best_pos
 }
 
-fn get_floor_neighbors(pos: Pos, memory: &BotMemory) -> Vec<Pos> {
+pub fn get_floor_neighbors(pos: Pos, memory: &BotMemory) -> Vec<Pos> {
     let candidates = [
         ([pos[0] + 1, pos[1]], "E"), // Rechts (X+1)
         ([pos[0] - 1, pos[1]], "W"), // Links (X-1)

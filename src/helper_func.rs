@@ -80,3 +80,4 @@ pub fn is_free(memory: &BotMemory, p: Pos) -> bool {
 pub fn clamp_pos(p: Pos, w: i32, h: i32) -> Pos { // make sure pos is within maprange (pos < width and height)
     [p[0].clamp(0, w - 1), p[1].clamp(0, h - 1)]
 }
+
